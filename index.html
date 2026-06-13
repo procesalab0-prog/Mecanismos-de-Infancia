@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mecanismos de Infancia — Juguetes mexicanos en metal con CNC</title>
+<meta name="description" content="Mecanismos de Infancia (MI): juguetes tradicionales mexicanos —balero, pirinola, yoyo, trompo, toma todo— mecanizados en metal con precisión CNC.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=DM+Serif+Display:ital@0;1&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:#F1EADB;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  ::selection{background:#D8421C;color:#F1EADB}
+  button{font-family:inherit}
+  @keyframes mi-spin{to{transform:rotate(360deg)}}
+  @keyframes mi-marquee{to{transform:translateX(-50%)}}
+  @keyframes mi-blink{0%,100%{opacity:1}50%{opacity:.25}}
+  @keyframes infancia-loop{
+    0%{color:#D8421C;font-style:normal;font-family:'Archivo',sans-serif}
+    20%{color:#1C6B52;font-style:italic;font-family:'DM Serif Display',serif}
+    40%{color:#D6336C;font-style:normal;font-family:'Space Mono',monospace}
+    60%{color:#E7A833;font-style:italic;font-family:'DM Serif Display',serif}
+    80%{color:#1C9B9B;font-style:normal;font-family:'Archivo',sans-serif}
+    100%{color:#D8421C;font-style:normal;font-family:'Archivo',sans-serif}
+  }
+  @keyframes mi-sway{0%,100%{transform:rotate(-3.5deg)}50%{transform:rotate(3.5deg)}}
+
+  /* ---- image-slot (reemplaza el componente del prototipo, persiste en localStorage) ---- */
+  image-slot{display:block;position:relative;cursor:pointer;overflow:hidden;background:transparent}
+  image-slot .mi-slot-img{position:absolute;inset:0;width:100%;height:100%;display:block}
+  image-slot .mi-slot-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
+    padding:14px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;line-height:1.5;
+    color:rgba(241,234,219,.92);text-transform:uppercase;}
+  image-slot .mi-slot-ph svg{display:block;margin:0 auto 8px;opacity:.85}
+  image-slot.mi-dragover{outline:3px dashed #161310;outline-offset:-6px}
+  image-slot.mi-filled .mi-slot-ph{display:none}
+  /* el placeholder se ve sobre los bloques de color, por eso texto claro */
+</style>
+</head>
+<body>
+
+<div id="mi-app" style="font-family:Archivo,sans-serif;color:#161310;background:#F1EADB;min-height:100vh;overflow-x:hidden;position:relative;container-type:inline-size;"></div>
+
+<script>
+/* =====================================================================
+   Mecanismos de Infancia — tienda (vanilla JS port del prototipo .dc.html)
+   ===================================================================== */
+(function () {
+  "use strict";
+
+  // ---------- DATOS ----------
+  var PRODUCTS = [
+    { id:'MI-01', code:'MI-01', name:'Balero', tipo:'Balero · 2 en 1', cat:'Sets', precio:980, accent:'#D8421C', combo:true,
+      material:'Aluminio + latón', mecanismo:'Copa y bola con contrapeso', piezas:'2 piezas', edad:'6+', dim:'set de 2 baleros',
+      shortDesc:'Set de dos baleros de metal que encajan entre sí.',
+      desc:'El balero de siempre, ahora como un set de dos piezas de metal mecanizado que encajan entre sí. Copa torneada y bola con contrapeso calculado: difícil de dominar, imposible de soltar.' },
+    { id:'MI-02', code:'MI-02', name:'Pirinola', tipo:'Pirinola clásica', cat:'Giratorios', precio:280, accent:'#1C6B52',
+      material:'Latón macizo', mecanismo:'Eje balanceado, 6 caras', piezas:'1 pieza', edad:'4+', dim:'5 × 5 × 7 cm',
+      shortDesc:'Pirinola de seis caras en latón macizo.',
+      desc:'La pirinola clásica de seis caras, mecanizada en latón macizo y balanceada para que gire parejo y por mucho tiempo sobre cualquier mesa.' },
+    { id:'MI-03', code:'MI-03', name:'Yoyo', tipo:'Yoyo de precisión', cat:'Destreza', precio:420, accent:'#E7A833',
+      material:'Aluminio anodizado', mecanismo:'Rodamiento de bolas', piezas:'4 piezas', edad:'6+', dim:'Ø 6 × 4 cm',
+      shortDesc:'Yoyo con rodamiento que duerme largo.',
+      desc:'Un yoyo de precisión con rodamiento de bolas en aluminio anodizado: duerme largo, responde al menor tirón y vuelve solo a tu mano.' },
+    { id:'MI-04', code:'MI-04', name:'Trompo', tipo:'Trompo mecánico', cat:'Giratorios', precio:360, accent:'#D6336C',
+      material:'Acero + latón', mecanismo:'Punta de acero, eje balanceado', piezas:'3 piezas', edad:'5+', dim:'7 × 7 × 9 cm',
+      shortDesc:'Trompo con punta de acero que gira parejo.',
+      desc:'El trompo de toda la vida, con punta de acero y cuerpo de latón balanceado por computadora para que baile más tiempo y más quieto.' },
+    { id:'MI-05', code:'MI-05', name:'Toma Todo', tipo:'Pirinola Toma Todo', cat:'De mesa', precio:320, accent:'#1C9B9B',
+      material:'Latón grabado', mecanismo:'Eje balanceado, caras grabadas', piezas:'1 pieza', edad:'4+', dim:'5 × 5 × 8 cm',
+      shortDesc:'Pirinola Toma Todo con las caras grabadas.',
+      desc:'La pirinola Toma Todo con las seis caras grabadas a láser —toma uno, toma todo, pon dos— para jugar en familia con una pieza hecha para durar generaciones.' }
+  ];
+
+  var TEAM = [
+    { code:'01', nombre:'Emmanuel Juárez', iniciales:'EJ', color:'#D8421C', fg:'#F1EADB', rol:'Diseño industrial', prod:'MI-01' },
+    { code:'02', nombre:'Natalia Perez', iniciales:'NP', color:'#E7A833', fg:'#161310', rol:'Programación CNC', prod:'MI-01' },
+    { code:'03', nombre:'Regina Rocha González', iniciales:'RR', color:'#1C6B52', fg:'#F1EADB', rol:'Modelado 3D', prod:'MI-02' },
+    { code:'04', nombre:'Iran Osorio', iniciales:'IO', color:'#D6336C', fg:'#F1EADB', rol:'Acabados y pulido', prod:'MI-03' },
+    { code:'05', nombre:'Cynthia Espinoza', iniciales:'CE', color:'#1C9B9B', fg:'#F1EADB', rol:'Ensamble', prod:'MI-04' },
+    { code:'06', nombre:'Andrea Piña', iniciales:'AP', color:'#161310', fg:'#F1EADB', rol:'Identidad y empaque', prod:'MI-05' }
+  ];
+
+  // ---------- ESTADO ----------
+  var state = { view:'inicio', selectedId:'MI-01', cart:[], cartOpen:false, cat:'Todos', ordered:false, narrow:false };
+
+  try { var s = localStorage.getItem('mi-cart'); if (s) state.cart = JSON.parse(s) || []; } catch (e) {}
+
+  function saveCart() { try { localStorage.setItem('mi-cart', JSON.stringify(state.cart)); } catch (e) {} }
+  function setState(patch) { for (var k in patch) state[k] = patch[k]; render(); }
+
+  function byId(id) { for (var i=0;i<PRODUCTS.length;i++) if (PRODUCTS[i].id===id) return PRODUCTS[i]; return null; }
+  function fmt(n) { return '$' + Number(n).toLocaleString('es-MX') + ' MXN'; }
+  function imgIdOf(p) { return 'img-' + p.id; }
+
+  function go(view, id) {
+    state.view = view; state.cartOpen = false;
+    if (id) state.selectedId = id;
+    render();
+    window.scrollTo(0, 0);
+  }
+  function addToCart(id) {
+    var ex = null;
+    for (var i=0;i<state.cart.length;i++) if (state.cart[i].id===id) ex = state.cart[i];
+    if (ex) ex.qty += 1; else state.cart.push({ id:id, qty:1 });
+    state.cartOpen = true; state.ordered = false;
+    saveCart(); render();
+  }
+  function chQty(id, d) {
+    for (var i=0;i<state.cart.length;i++) if (state.cart[i].id===id) state.cart[i].qty += d;
+    state.cart = state.cart.filter(function (c) { return c.qty > 0; });
+    saveCart(); render();
+  }
+  function removeItem(id) {
+    state.cart = state.cart.filter(function (c) { return c.id !== id; });
+    saveCart(); render();
+  }
+  function checkout() { state.cart = []; saveCart(); state.ordered = true; render(); }
+
+  // ---------- HELPERS DE PRESENTACIÓN ----------
+  function esc(t) { return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  var GLYPH_COLORS = ['#D6336C','#1C6B52','#E7A833','#D8421C','#1C9B9B'];
+
+  function papelPicadoSVG(color) {
+    return '<svg viewBox="0 0 120 112" width="84" height="80" style="display:block">'
+      + '<path d="M0 0 H120 V74 q-7.5 13 -15 0 q-7.5 13 -15 0 q-7.5 13 -15 0 q-7.5 13 -15 0 q-7.5 13 -15 0 q-7.5 13 -15 0 q-7.5 13 -15 0 q-7.5 13 -15 0 Z" fill="'+color+'"/>'
+      + '<circle cx="60" cy="24" r="10" fill="#F1EADB"/><rect x="53" y="41" width="14" height="14" fill="#F1EADB" transform="rotate(45 60 48)"/>'
+      + '<circle cx="34" cy="30" r="5" fill="#F1EADB"/><circle cx="86" cy="30" r="5" fill="#F1EADB"/>'
+      + '<circle cx="22" cy="52" r="4" fill="#F1EADB"/><circle cx="98" cy="52" r="4" fill="#F1EADB"/>'
+      + '<circle cx="44" cy="61" r="3.5" fill="#F1EADB"/><circle cx="76" cy="61" r="3.5" fill="#F1EADB"/></svg>';
+  }
+  function papelPicado() {
+    var flags = '';
+    for (var i = 0; i < 18; i++) {
+      var color = GLYPH_COLORS[i % GLYPH_COLORS.length];
+      var delay = [0, 0.45, 0.9, 1.35, 1.8][i % 5];
+      flags += '<div style="transform-origin:top center;animation:mi-sway 3.6s ease-in-out infinite;animation-delay:-' + delay + 's;flex:0 0 auto;">' + papelPicadoSVG(color) + '</div>';
+    }
+    return '<div style="position:relative;width:100%;overflow:hidden;border-bottom:1.5px solid #161310;background:#F1EADB;padding-top:3px;">'
+      + '<div style="position:absolute;top:4px;left:0;right:0;height:2px;background:#161310;"></div>'
+      + '<div style="display:flex;justify-content:center;align-items:flex-start;width:100%;">' + flags + '</div></div>';
+  }
+
+  function slot(id, ph, fit, style) {
+    return '<image-slot data-img-id="' + id + '" data-fit="' + (fit||'cover') + '" data-ph="' + esc(ph) + '" style="' + (style||'') + '"></image-slot>';
+  }
+
+  function footer() {
+    return '<footer style="background:#161310;color:#F1EADB;padding:56px 26px 28px;">'
+    + '<div style="max-width:1280px;margin:0 auto;display:flex;gap:44px;flex-wrap:wrap;justify-content:space-between;">'
+      + '<div style="max-width:26em;">'
+        + '<div style="display:flex;align-items:center;gap:11px;margin-bottom:16px;">'
+          + '<span style="font-family:Archivo;font-weight:900;font-size:30px;letter-spacing:-.05em;line-height:.75;">MI</span>'
+          + '<span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.2em;line-height:1.3;">MECANISMOS<br>DE INFANCIA</span>'
+        + '</div>'
+        + '<p style="font-family:Archivo;font-weight:500;font-size:15px;line-height:1.5;color:#c8bca6;margin:0;">Juguetes mexicanos mecanizados en metal con precisión CNC. El juego también es ingeniería.</p>'
+      + '</div>'
+      + '<div style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.04em;line-height:2.1;color:#c8bca6;">'
+        + '<div style="color:#7c715e;margin-bottom:6px;">TIENDA</div>'
+        + '<button data-action="go-inicio" style="display:block;font-family:inherit;font-size:inherit;letter-spacing:inherit;background:none;border:0;cursor:pointer;color:#F1EADB;padding:0;text-align:left;">Inicio</button>'
+        + '<button data-action="go-catalogo" style="display:block;font-family:inherit;font-size:inherit;letter-spacing:inherit;background:none;border:0;cursor:pointer;color:#F1EADB;padding:0;text-align:left;">Catálogo</button>'
+        + '<button data-action="go-nosotros" style="display:block;font-family:inherit;font-size:inherit;letter-spacing:inherit;background:none;border:0;cursor:pointer;color:#F1EADB;padding:0;text-align:left;">Nosotros</button>'
+      + '</div>'
+      + '<div style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.04em;line-height:2.1;color:#c8bca6;">'
+        + '<div style="color:#7c715e;margin-bottom:6px;">CONTACTO</div>'
+        + '<div>hola@mecanismos.mx</div><div>@mecanismosdeinfancia</div><div>Taller CNC · México</div>'
+      + '</div>'
+    + '</div>'
+    + '<div style="max-width:1280px;margin:40px auto 0;padding-top:18px;border-top:1px solid #3a3128;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-family:\'Space Mono\',monospace;font-size:10.5px;letter-spacing:.06em;color:#7c715e;">'
+      + '<span>© 2026 MECANISMOS DE INFANCIA</span><span>CNC + METAL · HECHO EN MÉXICO ✳</span>'
+    + '</div></footer>';
+  }
+
+  // ---------- NAV ----------
+  function nav() {
+    var n = state.narrow;
+    var navPadX = n ? '15px' : '26px', navGap = n ? '8px' : '24px', navInnerGap = n ? '2px' : '6px',
+        navFs = n ? '10.5px' : '12px', navLinkPad = n ? '8px 7px' : '8px 12px',
+        cartPad = n ? '9px 10px' : '9px 14px', navMl = n ? '2px' : '6px';
+    var ulInicio = state.view==='inicio' ? '#D8421C' : 'transparent';
+    var ulCatalogo = (state.view==='catalogo'||state.view==='producto') ? '#1C6B52' : 'transparent';
+    var ulNosotros = state.view==='nosotros' ? '#D6336C' : 'transparent';
+    var themeColor = state.cartOpen ? '#E7A833' : ({inicio:'#D8421C',catalogo:'#1C6B52',producto:'#1C6B52',nosotros:'#D6336C'}[state.view] || '#D8421C');
+    var cartCount = state.cart.reduce(function (a,c){ return a+c.qty; }, 0);
+    var logoDesc = n ? '' : '<span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.2em;color:#161310;line-height:1.3;text-align:left;">MECANISMOS<br>DE INFANCIA</span>';
+
+    return '<nav style="position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:'+navGap+';padding:13px '+navPadX+';background:rgba(241,234,219,.9);backdrop-filter:blur(12px);border-bottom:1.5px solid #161310;">'
+      + '<button data-action="go-inicio" style="display:flex;align-items:center;gap:11px;background:none;border:0;cursor:pointer;padding:0;">'
+        + '<span style="font-family:Archivo;font-weight:900;font-size:27px;letter-spacing:-.05em;color:#161310;line-height:.75;">MI</span>' + logoDesc
+      + '</button>'
+      + '<div style="display:flex;align-items:center;gap:'+navInnerGap+';">'
+        + '<button data-action="go-inicio" style="font-family:\'Space Mono\',monospace;font-size:'+navFs+';letter-spacing:.06em;text-transform:uppercase;background:none;border:0;cursor:pointer;padding:'+navLinkPad+';color:#161310;border-bottom:2px solid '+ulInicio+';">Inicio</button>'
+        + '<button data-action="go-catalogo" style="font-family:\'Space Mono\',monospace;font-size:'+navFs+';letter-spacing:.06em;text-transform:uppercase;background:none;border:0;cursor:pointer;padding:'+navLinkPad+';color:#161310;border-bottom:2px solid '+ulCatalogo+';">Catálogo</button>'
+        + '<button data-action="go-nosotros" style="font-family:\'Space Mono\',monospace;font-size:'+navFs+';letter-spacing:.06em;text-transform:uppercase;background:none;border:0;cursor:pointer;padding:'+navLinkPad+';color:#161310;border-bottom:2px solid '+ulNosotros+';">Nosotros</button>'
+        + '<button data-action="open-cart" style="display:flex;align-items:center;gap:8px;font-family:\'Space Mono\',monospace;font-size:'+navFs+';letter-spacing:.06em;text-transform:uppercase;background:#D8421C;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:'+cartPad+';margin-left:'+navMl+';">Carrito'
+          + '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;background:#161310;color:#F1EADB;border-radius:999px;font-size:11px;font-weight:700;">'+cartCount+'</span>'
+        + '</button>'
+      + '</div>'
+      + '<div style="position:absolute;left:0;right:0;bottom:-5px;height:5px;background:'+themeColor+';transition:background .3s ease;"></div>'
+    + '</nav>';
+  }
+
+  // ---------- GLYPH STRIP (motivo Munari) ----------
+  function glyphStrip() {
+    var cell = 'background:#F1EADB;aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:16%;';
+    var dark = 'background:#161310;aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:16%;';
+    return '<div data-reveal style="max-width:1280px;margin:42px auto 0;display:grid;grid-template-columns:repeat(8,1fr);gap:0;border:1.5px solid #161310;background:#161310;">'
+      + '<div style="'+cell+'"><svg viewBox="0 0 64 64" fill="none" stroke="#161310" stroke-width="3"><circle cx="32" cy="20" r="6"/><circle cx="32" cy="44" r="11"/><line x1="32" y1="26" x2="32" y2="33"/></svg></div>'
+      + '<div style="'+cell+'"><svg viewBox="0 0 64 64" fill="none" stroke="#161310" stroke-width="3"><circle cx="32" cy="32" r="6"/><circle cx="32" cy="32" r="13"/><circle cx="32" cy="32" r="20"/></svg></div>'
+      + '<div style="'+cell+'"><svg viewBox="0 0 64 64" fill="none" stroke="#161310" stroke-width="3" stroke-linecap="round"><path d="M32 12 A20 20 0 1 1 12 33 A13 13 0 1 1 33 22 A7 7 0 1 1 27 32"/></svg></div>'
+      + '<div style="'+cell+'"><svg viewBox="0 0 64 64" fill="none" stroke="#161310" stroke-width="3" stroke-linecap="round"><circle cx="32" cy="32" r="19"/><circle cx="25" cy="27" r="2.6" fill="#161310" stroke="none"/><circle cx="39" cy="27" r="2.6" fill="#161310" stroke="none"/><path d="M24 40 Q32 47 40 40"/></svg></div>'
+      + '<div style="'+cell+'"><svg viewBox="0 0 64 64" fill="none" stroke="#161310" stroke-width="3" stroke-linecap="round"><circle cx="32" cy="32" r="12"/><line x1="32" y1="5" x2="32" y2="20"/><line x1="32" y1="44" x2="32" y2="59"/><line x1="5" y1="32" x2="20" y2="32"/><line x1="44" y1="32" x2="59" y2="32"/></svg></div>'
+      + '<div style="'+cell+'"><svg viewBox="0 0 64 64" fill="none" stroke="#161310" stroke-width="3" stroke-linejoin="round"><path d="M14 26 L32 38 L50 26"/><path d="M14 36 L32 48 L50 36"/><path d="M14 16 L32 28 L50 16"/></svg></div>'
+      + '<div style="'+cell+'"><svg viewBox="0 0 64 64" fill="none" stroke="#161310" stroke-width="3" stroke-linecap="round"><circle cx="32" cy="32" r="8"/><line x1="32" y1="8" x2="32" y2="16"/><line x1="32" y1="48" x2="32" y2="56"/><line x1="8" y1="32" x2="16" y2="32"/><line x1="48" y1="32" x2="56" y2="32"/><line x1="15" y1="15" x2="20" y2="20"/><line x1="44" y1="44" x2="49" y2="49"/><line x1="49" y1="15" x2="44" y2="20"/><line x1="20" y1="44" x2="15" y2="49"/></svg></div>'
+      + '<div style="'+dark+'"><svg viewBox="0 0 64 64" fill="none" stroke="#F1EADB" stroke-width="3"><circle cx="22" cy="22" r="3" fill="#F1EADB" stroke="none"/><circle cx="42" cy="22" r="3" fill="#F1EADB" stroke="none"/><circle cx="22" cy="42" r="3" fill="#F1EADB" stroke="none"/><circle cx="42" cy="42" r="3" fill="#F1EADB" stroke="none"/><circle cx="32" cy="32" r="3" fill="#F1EADB" stroke="none"/></svg></div>'
+    + '</div>';
+  }
+
+  // ---------- VISTA: INICIO ----------
+  function viewInicio() {
+    var hero = byId('MI-01');
+    var featuredIds = ['MI-01','MI-03','MI-02'];
+    var cards = featuredIds.map(function (id) {
+      var p = byId(id);
+      return '<div data-reveal style="background:#F1EADB;border:1.5px solid #161310;display:flex;flex-direction:column;overflow:hidden;">'
+        + '<div style="position:relative;background:'+p.accent+';aspect-ratio:4/3;border-bottom:1.5px solid #161310;">'
+          + slot(imgIdOf(p), p.code+' · arrastra tu foto', 'cover', 'width:100%;height:100%;')
+          + '<span style="position:absolute;top:11px;left:11px;font-family:\'Space Mono\',monospace;font-size:11px;background:#161310;color:#F1EADB;padding:3px 8px;letter-spacing:.04em;">'+p.code+'</span>'
+        + '</div>'
+        + '<div style="padding:16px 17px 17px;display:flex;flex-direction:column;flex:1;">'
+          + '<div style="font-family:\'Space Mono\',monospace;font-size:10.5px;letter-spacing:.09em;color:#8a7d68;text-transform:uppercase;">'+p.tipo+'</div>'
+          + '<button data-action="open-product" data-id="'+p.id+'" style="font-family:Archivo;font-weight:800;font-size:28px;letter-spacing:-.03em;line-height:.95;margin:5px 0 0;background:none;border:0;text-align:left;padding:0;cursor:pointer;color:#161310;">'+p.name+'</button>'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:18px;">'
+            + '<span style="font-family:Archivo;font-weight:700;font-size:19px;">'+fmt(p.precio)+'</span>'
+            + '<button data-action="add" data-id="'+p.id+'" style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;background:#161310;color:#F1EADB;border:0;cursor:pointer;padding:10px 15px;">Agregar +</button>'
+          + '</div>'
+        + '</div>'
+      + '</div>';
+    }).join('');
+
+    return '<main style="padding-top:62px;">'
+      + papelPicado()
+      // HERO
+      + '<section style="padding:54px 26px 30px;border-bottom:1.5px solid #161310;">'
+        + '<div style="display:flex;gap:40px;flex-wrap:wrap;align-items:stretch;max-width:1280px;margin:0 auto;">'
+          + '<div style="flex:1.25;min-width:300px;display:flex;flex-direction:column;justify-content:center;">'
+            + '<div data-reveal style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.18em;color:#161310;margin-bottom:22px;display:flex;align-items:center;gap:12px;">'
+              + '<span style="width:9px;height:9px;background:#D8421C;border-radius:50%;display:inline-block;animation:mi-blink 2s ease-in-out infinite;"></span>EST. 2026 · HECHO EN MÉXICO · CNC + METAL</div>'
+            + '<h1 data-reveal style="font-family:Archivo;font-weight:900;font-size:clamp(44px,7.6cqw,108px);line-height:.82;letter-spacing:-.045em;margin:0;text-wrap:balance;">MECANISMOS<br>DE <span style="display:inline-block;color:#D8421C;animation:infancia-loop 8s steps(1,end) infinite;">INFANCIA</span></h1>'
+            + '<p data-reveal style="font-family:Archivo;font-weight:800;font-size:clamp(17px,2cqw,25px);letter-spacing:-.02em;line-height:1.12;margin:16px 0 0;color:#161310;">Juguetes mexicanos que <span style="color:#D8421C;">son mecanismos</span>.</p>'
+            + '<p data-reveal style="font-family:Archivo;font-weight:500;font-size:clamp(16px,1.5cqw,20px);line-height:1.45;max-width:30em;margin:14px 0 0;color:#3a3128;">Rescatamos el juego tradicional mexicano —el trompo, el balero, el alebrije— y lo reinventamos en metal con precisión CNC: aluminio, latón y acero mecanizados. Cada pieza es un mecanismo; cada mecanismo, un recuerdo.</p>'
+            + '<div data-reveal style="display:flex;gap:14px;flex-wrap:wrap;margin-top:32px;">'
+              + '<button data-action="go-catalogo" style="font-family:\'Space Mono\',monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;background:#161310;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:15px 26px;">Ver catálogo →</button>'
+              + '<button data-action="go-nosotros" style="font-family:\'Space Mono\',monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;background:none;color:#161310;border:1.5px solid #161310;cursor:pointer;padding:15px 26px;">Nuestra historia</button>'
+            + '</div>'
+          + '</div>'
+          + '<div data-reveal style="flex:.9;min-width:300px;position:relative;background:#D8421C;border:1.5px solid #161310;display:flex;flex-direction:column;">'
+            + '<div style="position:absolute;top:14px;left:14px;z-index:2;font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.05em;background:#161310;color:#F1EADB;padding:4px 9px;">'+hero.code+' / PIEZA DESTACADA</div>'
+            + '<div style="position:absolute;top:14px;right:14px;z-index:2;animation:mi-spin 16s linear infinite;width:34px;height:34px;"><svg viewBox="0 0 64 64" fill="none" stroke="#F1EADB" stroke-width="3.5" stroke-linecap="round"><circle cx="32" cy="32" r="11"/><circle cx="32" cy="32" r="3.2" fill="#F1EADB" stroke="none"/><line x1="32" y1="9" x2="32" y2="17"/><line x1="32" y1="47" x2="32" y2="55"/><line x1="9" y1="32" x2="17" y2="32"/><line x1="47" y1="32" x2="55" y2="32"/><line x1="16" y1="16" x2="22" y2="22"/><line x1="42" y1="42" x2="48" y2="48"/><line x1="48" y1="16" x2="42" y2="22"/><line x1="22" y1="42" x2="16" y2="48"/></svg></div>'
+            + '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:18px;min-height:330px;">'
+              + slot(imgIdOf(hero), 'Arrastra aquí la foto del juguete destacado', 'contain', 'width:100%;height:100%;min-height:300px;')
+            + '</div>'
+            + '<div style="border-top:1.5px solid #161310;background:#F1EADB;padding:14px 16px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">'
+              + '<div><div style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8a7d68;">'+hero.tipo+'</div>'
+              + '<div style="font-family:Archivo;font-weight:800;font-size:27px;letter-spacing:-.03em;line-height:1;margin-top:2px;">'+hero.name+'</div></div>'
+              + '<button data-action="open-product" data-id="'+hero.id+'" style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;background:#D8421C;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:10px 14px;white-space:nowrap;">Ver →</button>'
+            + '</div>'
+          + '</div>'
+        + '</div>'
+        + glyphStrip()
+      + '</section>'
+      // MARQUEE
+      + '<div style="overflow:hidden;background:#161310;border-bottom:1.5px solid #161310;padding:11px 0;">'
+        + '<div style="display:flex;width:max-content;animation:mi-marquee 24s linear infinite;">'
+          + '<span style="font-family:\'Space Mono\',monospace;font-size:14px;letter-spacing:.14em;color:#F1EADB;white-space:nowrap;">PRECISIÓN CNC&nbsp;&nbsp;✳&nbsp;&nbsp;ALUMINIO · LATÓN · ACERO&nbsp;&nbsp;✳&nbsp;&nbsp;DISEÑO MEXICANO&nbsp;&nbsp;✳&nbsp;&nbsp;JUEGO QUE DURA&nbsp;&nbsp;✳&nbsp;&nbsp;HECHO EN MÉXICO&nbsp;&nbsp;✳&nbsp;&nbsp;</span>'
+          + '<span style="font-family:\'Space Mono\',monospace;font-size:14px;letter-spacing:.14em;color:#F1EADB;white-space:nowrap;">PRECISIÓN CNC&nbsp;&nbsp;✳&nbsp;&nbsp;ALUMINIO · LATÓN · ACERO&nbsp;&nbsp;✳&nbsp;&nbsp;DISEÑO MEXICANO&nbsp;&nbsp;✳&nbsp;&nbsp;JUEGO QUE DURA&nbsp;&nbsp;✳&nbsp;&nbsp;HECHO EN MÉXICO&nbsp;&nbsp;✳&nbsp;&nbsp;</span>'
+        + '</div>'
+      + '</div>'
+      // DESTACADOS
+      + '<section style="padding:60px 26px;border-bottom:1.5px solid #161310;">'
+        + '<div style="max-width:1280px;margin:0 auto;">'
+          + '<div data-reveal style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:34px;">'
+            + '<div><div style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.14em;color:#8a7d68;margin-bottom:8px;">01 — CATÁLOGO</div>'
+            + '<h2 style="font-family:Archivo;font-weight:900;font-size:clamp(34px,4.6cqw,60px);letter-spacing:-.04em;line-height:.9;margin:0;">DESTACADOS</h2></div>'
+            + '<button data-action="go-catalogo" style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.05em;text-transform:uppercase;background:none;border:0;border-bottom:2px solid #161310;cursor:pointer;padding:4px 0;color:#161310;">Ver las 5 piezas →</button>'
+          + '</div>'
+          + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">'+cards+'</div>'
+        + '</div>'
+      + '</section>'
+      // PROCESO
+      + '<section style="padding:64px 26px;background:#1C6B52;border-bottom:1.5px solid #161310;color:#F1EADB;">'
+        + '<div style="max-width:1280px;margin:0 auto;">'
+          + '<div data-reveal style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.14em;opacity:.8;margin-bottom:8px;">02 — TALLER</div>'
+          + '<h2 data-reveal style="font-family:Archivo;font-weight:900;font-size:clamp(34px,4.8cqw,64px);letter-spacing:-.04em;line-height:.9;margin:0 0 38px;">DEL ARCHIVO<br>A LA MANO</h2>'
+          + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;border:1.5px solid #F1EADB;">'
+            + procesoStep('01','<rect x="12" y="10" width="40" height="44"/><line x1="20" y1="22" x2="44" y2="22"/><line x1="20" y1="32" x2="38" y2="32"/><line x1="20" y1="42" x2="34" y2="42"/>','Dibujo','Cada juguete empieza como un plano en CAD, pieza por pieza.', true)
+            + procesoStep('02','<circle cx="32" cy="32" r="10"/><circle cx="32" cy="32" r="3" fill="#F1EADB" stroke="none"/><line x1="32" y1="8" x2="32" y2="16"/><line x1="32" y1="48" x2="32" y2="56"/><line x1="8" y1="32" x2="16" y2="32"/><line x1="48" y1="32" x2="56" y2="32"/><line x1="15" y1="15" x2="20" y2="20"/><line x1="44" y1="44" x2="49" y2="49"/><line x1="49" y1="15" x2="44" y2="20"/><line x1="20" y1="44" x2="15" y2="49"/>','Fresado CNC','La fresadora mecaniza el metal al décimo de milímetro.', true)
+            + procesoStep('03','<path d="M14 50 L40 24 L48 32 L22 58 Z" transform="translate(-2 -6)"/><line x1="40" y1="18" x2="48" y2="26"/>','Acabado','Pulido y anodizado a mano, sin prisa, pieza por pieza.', true)
+            + procesoStep('04','<circle cx="24" cy="26" r="10"/><circle cx="42" cy="38" r="10"/>','Ensamble','Cada mecanismo se arma y se prueba antes de salir del taller.', false)
+          + '</div>'
+        + '</div>'
+      + '</section>'
+      // HISTORIA TEASER
+      + '<section style="padding:70px 26px;border-bottom:1.5px solid #161310;">'
+        + '<div data-reveal style="max-width:1000px;margin:0 auto;text-align:center;">'
+          + '<div style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.14em;color:#8a7d68;margin-bottom:20px;">03 — NOSOTROS</div>'
+          + '<p style="font-family:Archivo;font-weight:800;font-size:clamp(26px,3.6cqw,46px);line-height:1.08;letter-spacing:-.03em;margin:0;text-wrap:balance;">Seis estudiantes convencidos de que <span style="color:#D8421C;">el juego también es ingeniería.</span></p>'
+          + '<button data-action="go-nosotros" style="font-family:\'Space Mono\',monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;background:#161310;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:15px 28px;margin-top:32px;">Conócenos →</button>'
+        + '</div>'
+      + '</section>'
+      + footer()
+    + '</main>';
+  }
+
+  function procesoStep(num, svgInner, title, desc, border) {
+    return '<div data-reveal style="padding:24px;'+(border?'border-right:1.5px solid #F1EADB;':'')+'">'
+      + '<div style="font-family:\'Space Mono\',monospace;font-size:13px;letter-spacing:.1em;margin-bottom:18px;">'+num+'</div>'
+      + '<svg viewBox="0 0 64 64" width="40" height="40" fill="none" stroke="#F1EADB" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:16px;">'+svgInner+'</svg>'
+      + '<h3 style="font-family:Archivo;font-weight:800;font-size:22px;letter-spacing:-.02em;margin:0 0 8px;">'+title+'</h3>'
+      + '<p style="font-family:Archivo;font-weight:400;font-size:14px;line-height:1.5;margin:0;opacity:.9;">'+desc+'</p></div>';
+  }
+
+  // ---------- VISTA: CATÁLOGO ----------
+  function viewCatalogo() {
+    var cats = ['Todos','Giratorios','Destreza','De mesa','Sets'];
+    var chips = cats.map(function (c) {
+      var sel = c === state.cat;
+      return '<button data-action="set-cat" data-cat="'+esc(c)+'" style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.05em;text-transform:uppercase;border:1.5px solid #161310;cursor:pointer;padding:9px 16px;background:'+(sel?'#161310':'transparent')+';color:'+(sel?'#F1EADB':'#161310')+';">'+c+'</button>';
+    }).join('');
+    var filtered = state.cat==='Todos' ? PRODUCTS : PRODUCTS.filter(function (p){ return p.cat===state.cat; });
+    var cards = filtered.map(function (p) {
+      return '<div data-reveal style="background:#F1EADB;border:1.5px solid #161310;display:flex;flex-direction:column;overflow:hidden;">'
+        + '<div style="position:relative;background:'+p.accent+';aspect-ratio:1;border-bottom:1.5px solid #161310;">'
+          + slot(imgIdOf(p), p.code+' · arrastra tu foto', 'cover', 'width:100%;height:100%;')
+          + '<span style="position:absolute;top:11px;left:11px;font-family:\'Space Mono\',monospace;font-size:11px;background:#161310;color:#F1EADB;padding:3px 8px;letter-spacing:.04em;">'+p.code+'</span>'
+          + '<span style="position:absolute;top:11px;right:11px;font-family:\'Space Mono\',monospace;font-size:10px;background:#F1EADB;color:#161310;border:1.5px solid #161310;padding:2px 7px;letter-spacing:.04em;">'+p.cat+'</span>'
+        + '</div>'
+        + '<div style="padding:17px 18px 18px;display:flex;flex-direction:column;flex:1;">'
+          + '<div style="font-family:\'Space Mono\',monospace;font-size:10.5px;letter-spacing:.09em;color:#8a7d68;text-transform:uppercase;">'+p.tipo+'</div>'
+          + '<button data-action="open-product" data-id="'+p.id+'" style="font-family:Archivo;font-weight:800;font-size:30px;letter-spacing:-.03em;line-height:.95;margin:5px 0 0;background:none;border:0;text-align:left;padding:0;cursor:pointer;color:#161310;">'+p.name+'</button>'
+          + '<p style="font-family:Archivo;font-weight:400;font-size:13.5px;line-height:1.5;color:#5a5043;margin:10px 0 0;">'+p.shortDesc+'</p>'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:18px;">'
+            + '<span style="font-family:Archivo;font-weight:700;font-size:20px;">'+fmt(p.precio)+'</span>'
+            + '<div style="display:flex;gap:8px;">'
+              + '<button data-action="open-product" data-id="'+p.id+'" style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;background:none;color:#161310;border:1.5px solid #161310;cursor:pointer;padding:9px 13px;">Ver</button>'
+              + '<button data-action="add" data-id="'+p.id+'" style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;background:#161310;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:9px 13px;">Agregar +</button>'
+            + '</div>'
+          + '</div>'
+        + '</div>'
+      + '</div>';
+    }).join('');
+
+    return '<main style="padding-top:62px;min-height:100vh;">'
+      + '<section style="padding:54px 26px 28px;border-bottom:1.5px solid #161310;">'
+        + '<div style="max-width:1280px;margin:0 auto;">'
+          + '<div data-reveal style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.14em;color:#1C6B52;margin-bottom:10px;">CATÁLOGO COMPLETO · 05 PIEZAS</div>'
+          + '<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;"><h1 data-reveal style="font-family:Archivo;font-weight:900;font-size:clamp(48px,8cqw,108px);letter-spacing:-.05em;line-height:.84;margin:0;">CATÁLOGO</h1><svg data-reveal width="62" height="62" viewBox="0 0 64 64" fill="none" stroke="#1C6B52" stroke-width="4.5" style="flex-shrink:0;"><rect x="6" y="6" width="22" height="22" rx="3"/><rect x="36" y="6" width="22" height="22" rx="3"/><rect x="6" y="36" width="22" height="22" rx="3"/><rect x="36" y="36" width="22" height="22" rx="3"/></svg></div>'
+          + '<div data-reveal style="display:flex;gap:9px;flex-wrap:wrap;margin-top:30px;">'+chips+'</div>'
+        + '</div>'
+      + '</section>'
+      + '<section style="padding:34px 26px 70px;">'
+        + '<div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px;">'+cards+'</div>'
+      + '</section>'
+      + footer()
+    + '</main>';
+  }
+
+  // ---------- VISTA: PRODUCTO ----------
+  function viewProducto() {
+    var p = byId(state.selectedId) || PRODUCTS[0];
+    var related = PRODUCTS.filter(function (x){ return x.id !== p.id; }).slice(0, 3);
+    var relatedHtml = related.map(function (r) {
+      return '<div style="background:#F1EADB;border:1.5px solid #161310;display:flex;align-items:center;gap:14px;padding:13px;cursor:pointer;">'
+        + '<div style="width:64px;height:64px;background:'+r.accent+';border:1.5px solid #161310;flex-shrink:0;"></div>'
+        + '<button data-action="open-product" data-id="'+r.id+'" style="flex:1;text-align:left;background:none;border:0;cursor:pointer;padding:0;">'
+          + '<div style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.06em;color:#8a7d68;text-transform:uppercase;">'+r.code+'</div>'
+          + '<div style="font-family:Archivo;font-weight:800;font-size:21px;letter-spacing:-.02em;line-height:1;margin-top:3px;">'+r.name+'</div>'
+          + '<div style="font-family:Archivo;font-weight:700;font-size:14px;margin-top:6px;color:#3a3128;">'+fmt(r.precio)+'</div>'
+        + '</button></div>';
+    }).join('');
+
+    function specRow(label, val) {
+      return '<div style="display:flex;justify-content:space-between;padding:11px 2px;border-bottom:1px solid #d8cdb6;"><span style="color:#8a7d68;">'+label+'</span><span>'+val+'</span></div>';
+    }
+
+    return '<main style="padding-top:62px;min-height:100vh;">'
+      + '<section style="padding:30px 26px 16px;border-bottom:1.5px solid #161310;">'
+        + '<div style="max-width:1280px;margin:0 auto;font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.06em;color:#8a7d68;">'
+          + '<button data-action="go-catalogo" style="font-family:inherit;font-size:inherit;letter-spacing:inherit;background:none;border:0;cursor:pointer;color:#8a7d68;padding:0;">CATÁLOGO</button>'
+          + '<span style="color:#161310;"> / '+p.code+' · '+p.name+'</span>'
+        + '</div>'
+      + '</section>'
+      + '<section style="padding:40px 26px 60px;">'
+        + '<div style="max-width:1280px;margin:0 auto;display:flex;gap:48px;flex-wrap:wrap;">'
+          + '<div style="flex:1.1;min-width:300px;position:relative;background:'+p.accent+';border:1.5px solid #161310;display:flex;align-items:center;justify-content:center;padding:24px;min-height:440px;">'
+            + '<span style="position:absolute;top:14px;left:14px;font-family:\'Space Mono\',monospace;font-size:11px;background:#161310;color:#F1EADB;padding:4px 9px;letter-spacing:.05em;">'+p.code+'</span>'
+            + slot(imgIdOf(p), 'Arrastra la foto de '+p.name, 'contain', 'width:100%;height:100%;min-height:400px;')
+          + '</div>'
+          + '<div style="flex:.9;min-width:300px;display:flex;flex-direction:column;">'
+            + '<div style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.09em;color:#8a7d68;text-transform:uppercase;">'+p.tipo+'</div>'
+            + '<h1 style="font-family:Archivo;font-weight:900;font-size:clamp(44px,6cqw,76px);letter-spacing:-.04em;line-height:.86;margin:8px 0 0;">'+p.name+'</h1>'
+            + '<p style="font-family:Archivo;font-weight:500;font-size:17px;line-height:1.5;color:#3a3128;margin:20px 0 0;max-width:34em;">'+p.desc+'</p>'
+            + '<div style="font-family:\'Space Mono\',monospace;font-size:13px;border-top:1.5px solid #161310;margin-top:28px;">'
+              + specRow('MATERIAL', p.material) + specRow('MECANISMO', p.mecanismo) + specRow('PIEZAS', p.piezas)
+              + specRow('EDAD', p.edad+' años') + specRow('MEDIDAS', p.dim)
+            + '</div>'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:30px;">'
+              + '<span style="font-family:Archivo;font-weight:800;font-size:38px;letter-spacing:-.03em;">'+fmt(p.precio)+'</span>'
+              + '<button data-action="add" data-id="'+p.id+'" style="font-family:\'Space Mono\',monospace;font-size:14px;letter-spacing:.05em;text-transform:uppercase;background:#D8421C;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:17px 30px;flex:1;min-width:200px;">Agregar al carrito +</button>'
+            + '</div>'
+            + '<button data-action="go-catalogo" style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.05em;text-transform:uppercase;background:none;border:0;border-bottom:2px solid #161310;cursor:pointer;padding:4px 0;color:#161310;margin-top:26px;align-self:flex-start;">← Volver al catálogo</button>'
+          + '</div>'
+        + '</div>'
+        + '<div style="max-width:1280px;margin:60px auto 0;">'
+          + '<div style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.12em;color:#8a7d68;margin-bottom:20px;">TAMBIÉN TE PUEDE GUSTAR</div>'
+          + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">'+relatedHtml+'</div>'
+        + '</div>'
+      + '</section>'
+      + footer()
+    + '</main>';
+  }
+
+  // ---------- VISTA: NOSOTROS ----------
+  function viewNosotros() {
+    var teamHtml = TEAM.map(function (t) {
+      var prod = byId(t.prod);
+      return '<div data-reveal style="background:#F1EADB;border:1.5px solid #161310;padding:20px;display:flex;flex-direction:column;align-items:center;text-align:center;">'
+        + '<div style="width:92px;height:92px;border-radius:50%;background:'+t.color+';border:1.5px solid #161310;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+          + '<span style="font-family:Archivo;font-weight:900;font-size:30px;letter-spacing:-.02em;color:'+t.fg+';">'+t.iniciales+'</span></div>'
+        + '<div style="font-family:Archivo;font-weight:800;font-size:18px;letter-spacing:-.02em;line-height:1.1;margin:15px 0 0;text-wrap:balance;">'+t.nombre+'</div>'
+        + '<div style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.04em;color:#8a7d68;margin-top:4px;">'+t.rol+'</div>'
+        + '<div style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.05em;background:#161310;color:#F1EADB;padding:4px 9px;margin-top:13px;">'+t.prod+' · '+(prod?prod.name:'')+'</div>'
+      + '</div>';
+    }).join('');
+
+    function valor(stroke, svgInner, title, desc, border) {
+      return '<div data-reveal style="padding:34px 26px;'+(border?'border-right:1.5px solid #161310;':'')+'">'
+        + '<svg viewBox="0 0 64 64" width="34" height="34" fill="none" stroke="'+stroke+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:16px;">'+svgInner+'</svg>'
+        + '<h3 style="font-family:Archivo;font-weight:800;font-size:21px;letter-spacing:-.02em;margin:0 0 7px;">'+title+'</h3>'
+        + '<p style="font-family:Archivo;font-size:14px;line-height:1.5;color:#5a5043;margin:0;">'+desc+'</p></div>';
+    }
+
+    return '<main style="padding-top:62px;min-height:100vh;">'
+      + '<section style="padding:60px 26px;border-bottom:1.5px solid #161310;">'
+        + '<div style="max-width:1100px;margin:0 auto;">'
+          + '<div data-reveal style="display:flex;align-items:center;gap:11px;font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.14em;color:#D6336C;margin-bottom:14px;"><svg width="24" height="24" viewBox="0 0 64 64" fill="#D6336C"><circle cx="20" cy="22" r="9"/><circle cx="44" cy="22" r="9"/><path d="M4 52c0-9 7-16 16-16s16 7 16 16z"/><path d="M28 52c0-9 7-16 16-16s16 7 16 16z"/></svg>QUIÉNES SOMOS</div>'
+          + '<h1 data-reveal style="font-family:Archivo;font-weight:900;font-size:clamp(40px,6.4cqw,88px);letter-spacing:-.045em;line-height:.88;margin:0;">EL JUEGO TAMBIÉN<br>ES <span style="color:#D8421C;">INGENIERÍA.</span></h1>'
+          + '<p data-reveal style="font-family:Archivo;font-weight:500;font-size:clamp(17px,1.7cqw,21px);line-height:1.55;max-width:42em;margin:30px 0 0;color:#3a3128;">Mecanismos de Infancia nació en un taller, entre virutas de metal y líneas de código. Somos seis estudiantes que tomamos los juguetes con los que crecimos y los volvimos a dibujar pieza por pieza, para mecanizarlos en metal —aluminio, latón y acero— con una fresadora CNC. El resultado: objetos que se mueven, que duran, y que cargan un pedazo de México en cada engrane.</p>'
+        + '</div>'
+      + '</section>'
+      + '<section style="padding:0;border-bottom:1.5px solid #161310;">'
+        + '<div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">'
+          + valor('#D8421C','<circle cx="32" cy="32" r="12"/><line x1="32" y1="6" x2="32" y2="18"/><line x1="32" y1="46" x2="32" y2="58"/><line x1="6" y1="32" x2="18" y2="32"/><line x1="46" y1="32" x2="58" y2="32"/>','Precisión que se siente','Cada corte está calculado al décimo de milímetro.', true)
+          + valor('#1C6B52','<path d="M32 8 C20 22 20 38 32 56 C44 38 44 22 32 8 Z"/><line x1="32" y1="20" x2="32" y2="50"/>','Metal que perdura','Aluminio, latón y acero, no plástico.', true)
+          + valor('#D6336C','<circle cx="32" cy="32" r="18"/><circle cx="26" cy="28" r="2.6" fill="#D6336C" stroke="none"/><circle cx="38" cy="28" r="2.6" fill="#D6336C" stroke="none"/><path d="M25 40 Q32 46 39 40"/>','Diseño nuestro','Formas que vienen de nuestra propia memoria.', true)
+          + valor('#E7A833','<circle cx="24" cy="28" r="9"/><circle cx="42" cy="36" r="9"/>','Hecho para durar','Juguetes que pasan de mano en mano.', false)
+        + '</div>'
+      + '</section>'
+      + '<section style="padding:60px 26px;border-bottom:1.5px solid #161310;">'
+        + '<div style="max-width:1280px;margin:0 auto;">'
+          + '<div data-reveal style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:34px;">'
+            + '<h2 style="font-family:Archivo;font-weight:900;font-size:clamp(34px,4.8cqw,62px);letter-spacing:-.04em;line-height:.9;margin:0;">SEIS MANOS</h2>'
+            + '<p style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.05em;color:#8a7d68;max-width:24em;text-align:right;">Un juguete por integrante. Dos manos comparten un mismo set.</p>'
+          + '</div>'
+          + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:18px;">'+teamHtml+'</div>'
+        + '</div>'
+      + '</section>'
+      + '<section style="padding:64px 26px;background:#D8421C;color:#F1EADB;border-bottom:1.5px solid #161310;">'
+        + '<div data-reveal style="max-width:900px;margin:0 auto;text-align:center;">'
+          + '<p style="font-family:Archivo;font-weight:800;font-size:clamp(24px,3.2cqw,40px);line-height:1.12;letter-spacing:-.03em;margin:0;text-wrap:balance;">"Queremos que un niño juegue hoy con algo que pueda heredar mañana."</p>'
+          + '<button data-action="go-catalogo" style="font-family:\'Space Mono\',monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;background:#161310;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:15px 28px;margin-top:30px;">Ver el catálogo →</button>'
+        + '</div>'
+      + '</section>'
+      + footer()
+    + '</main>';
+  }
+
+  // ---------- CARRITO (drawer) ----------
+  function cartDrawer() {
+    if (!state.cartOpen) return '';
+    var cartCount = state.cart.reduce(function (a,c){ return a+c.qty; }, 0);
+    var hasItems = cartCount > 0;
+    var inner;
+    if (state.ordered) {
+      inner = '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;gap:18px;">'
+        + '<svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#1C6B52" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="24"/><path d="M21 33 L29 41 L44 24"/></svg>'
+        + '<div style="font-family:Archivo;font-weight:900;font-size:30px;letter-spacing:-.03em;">¡Gracias!</div>'
+        + '<p style="font-family:Archivo;font-size:15px;line-height:1.5;color:#5a5043;margin:0;max-width:24em;">Tu pedido fue registrado. Pronto un mecanismo nuevo estará en camino.</p>'
+        + '<button data-action="go-inicio" style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.05em;text-transform:uppercase;background:#161310;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:14px 24px;margin-top:6px;">Seguir explorando</button>'
+      + '</div>';
+    } else if (!hasItems) {
+      inner = '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;gap:16px;">'
+        + '<svg viewBox="0 0 64 64" width="56" height="56" fill="none" stroke="#161310" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5;"><circle cx="32" cy="32" r="6"/><circle cx="32" cy="32" r="13"/><circle cx="32" cy="32" r="20"/></svg>'
+        + '<div style="font-family:Archivo;font-weight:800;font-size:22px;letter-spacing:-.02em;">Tu carrito está vacío</div>'
+        + '<p style="font-family:Archivo;font-size:14px;color:#5a5043;margin:0;">Agrega un mecanismo para empezar.</p>'
+        + '<button data-action="go-catalogo" style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.05em;text-transform:uppercase;background:#D8421C;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:14px 24px;margin-top:6px;">Ir al catálogo →</button>'
+      + '</div>';
+    } else {
+      var items = state.cart.map(function (c) {
+        var p = byId(c.id);
+        return '<div style="display:flex;gap:14px;padding:18px 0;border-bottom:1px solid #d8cdb6;align-items:center;">'
+          + '<div style="width:54px;height:54px;background:'+p.accent+';border:1.5px solid #161310;flex-shrink:0;"></div>'
+          + '<div style="flex:1;min-width:0;">'
+            + '<div style="font-family:\'Space Mono\',monospace;font-size:9.5px;letter-spacing:.06em;color:#8a7d68;text-transform:uppercase;">'+p.code+' · '+p.tipo+'</div>'
+            + '<div style="font-family:Archivo;font-weight:800;font-size:19px;letter-spacing:-.02em;line-height:1;margin-top:3px;">'+p.name+'</div>'
+            + '<div style="display:flex;align-items:center;gap:10px;margin-top:9px;">'
+              + '<div style="display:flex;align-items:center;border:1.5px solid #161310;">'
+                + '<button data-action="dec" data-id="'+c.id+'" style="font-family:\'Space Mono\',monospace;font-size:14px;background:none;border:0;cursor:pointer;width:28px;height:28px;color:#161310;">−</button>'
+                + '<span style="font-family:\'Space Mono\',monospace;font-size:13px;min-width:26px;text-align:center;">'+c.qty+'</span>'
+                + '<button data-action="inc" data-id="'+c.id+'" style="font-family:\'Space Mono\',monospace;font-size:14px;background:none;border:0;cursor:pointer;width:28px;height:28px;color:#161310;">+</button>'
+              + '</div>'
+              + '<button data-action="remove" data-id="'+c.id+'" style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.04em;text-transform:uppercase;background:none;border:0;cursor:pointer;color:#8a7d68;text-decoration:underline;">Quitar</button>'
+            + '</div>'
+          + '</div>'
+          + '<div style="font-family:Archivo;font-weight:700;font-size:17px;white-space:nowrap;">'+fmt(p.precio*c.qty)+'</div>'
+        + '</div>';
+      }).join('');
+      var total = state.cart.reduce(function (a,c){ return a + byId(c.id).precio * c.qty; }, 0);
+      inner = '<div style="flex:1;overflow-y:auto;padding:6px 22px;">'+items+'</div>'
+        + '<div style="border-top:1.5px solid #161310;padding:20px 22px;">'
+          + '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;">'
+            + '<span style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a7d68;">Total</span>'
+            + '<span style="font-family:Archivo;font-weight:900;font-size:30px;letter-spacing:-.03em;">'+fmt(total)+'</span>'
+          + '</div>'
+          + '<button data-action="checkout" style="width:100%;font-family:\'Space Mono\',monospace;font-size:14px;letter-spacing:.06em;text-transform:uppercase;background:#D8421C;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:17px;">Finalizar compra</button>'
+          + '<div style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.04em;color:#8a7d68;text-align:center;margin-top:11px;">ENVÍO GRATIS EN MÉXICO · PAGO SEGURO</div>'
+        + '</div>';
+    }
+
+    return '<div data-action="close-cart" style="position:fixed;inset:0;z-index:60;background:rgba(22,19,16,.42);"></div>'
+      + '<aside style="position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(440px,92cqw);background:#F1EADB;border-left:1.5px solid #161310;border-top:5px solid #E7A833;display:flex;flex-direction:column;box-shadow:-18px 0 50px rgba(22,19,16,.16);">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1.5px solid #161310;">'
+          + '<div style="display:flex;align-items:center;gap:10px;"><svg width="26" height="26" viewBox="0 0 64 64" fill="none" stroke="#E7A833" stroke-width="4.5" stroke-linejoin="round"><path d="M14 22h36l-3 33H17z"/><path d="M24 22v-3a8 8 0 0116 0v3"/></svg><div style="font-family:Archivo;font-weight:900;font-size:24px;letter-spacing:-.03em;">TU CARRITO <span style="font-family:\'Space Mono\',monospace;font-size:13px;font-weight:400;color:#8a7d68;">['+cartCount+']</span></div></div>'
+          + '<button data-action="close-cart" style="font-family:\'Space Mono\',monospace;font-size:13px;background:none;border:1.5px solid #161310;cursor:pointer;width:34px;height:34px;color:#161310;">✕</button>'
+        + '</div>' + inner
+      + '</aside>';
+  }
+
+  // ---------- RENDER ----------
+  function render() {
+    var body;
+    if (state.view === 'catalogo') body = viewCatalogo();
+    else if (state.view === 'producto') body = viewProducto();
+    else if (state.view === 'nosotros') body = viewNosotros();
+    else body = viewInicio();
+
+    var app = document.getElementById('mi-app');
+    app.innerHTML = nav() + body + cartDrawer();
+    hydrateSlots(app);
+    setupReveal(app);
+  }
+
+  // ---------- EVENTOS (delegación) ----------
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+    var a = el.getAttribute('data-action');
+    var id = el.getAttribute('data-id');
+    switch (a) {
+      case 'go-inicio': go('inicio'); break;
+      case 'go-catalogo': go('catalogo'); break;
+      case 'go-nosotros': go('nosotros'); break;
+      case 'open-product': go('producto', id); break;
+      case 'open-cart': setState({ cartOpen:true }); break;
+      case 'close-cart': setState({ cartOpen:false }); break;
+      case 'set-cat': setState({ cat: el.getAttribute('data-cat') }); break;
+      case 'add': addToCart(id); break;
+      case 'inc': chQty(id, 1); break;
+      case 'dec': chQty(id, -1); break;
+      case 'remove': removeItem(id); break;
+      case 'checkout': checkout(); break;
+    }
+  });
+
+  // ---------- REVEAL ON SCROLL ----------
+  var _io;
+  function setupReveal(scope) {
+    if (typeof IntersectionObserver === 'undefined') return;
+    if (!_io) {
+      _io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) {
+            en.target.style.opacity = '1';
+            en.target.style.transform = 'none';
+            en.target.setAttribute('data-shown', '1');
+            _io.unobserve(en.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -7% 0px' });
+    }
+    requestAnimationFrame(function () {
+      scope.querySelectorAll('[data-reveal]:not([data-shown])').forEach(function (el) {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+        el.style.transition = 'opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1)';
+        _io.observe(el);
+      });
+    });
+  }
+
+  // ---------- RESPONSIVE (ancho del contenedor) ----------
+  (function observeWidth() {
+    var el = document.getElementById('mi-app');
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    var ro = new ResizeObserver(function () {
+      var n = el.clientWidth < 560;
+      if (n !== state.narrow) { state.narrow = n; render(); }
+    });
+    ro.observe(el);
+    state.narrow = el.clientWidth < 560;
+  })();
+
+  // ---------- IMAGE-SLOT (drag&drop + click, persiste en localStorage por id) ----------
+  var IMG_KEY = 'mi-images';
+  function loadImages() { try { return JSON.parse(localStorage.getItem(IMG_KEY) || '{}'); } catch (e) { return {}; } }
+  function saveImage(id, dataUrl) {
+    var m = loadImages();
+    if (dataUrl) m[id] = dataUrl; else delete m[id];
+    try { localStorage.setItem(IMG_KEY, JSON.stringify(m)); } catch (e) {}
+  }
+
+  function fileToDataUrl(file, cb) {
+    var ACCEPT = ['image/png','image/jpeg','image/webp','image/avif'];
+    if (ACCEPT.indexOf(file.type) === -1) { alert('Formato no soportado. Usa PNG, JPG, WebP o AVIF.'); return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var MAX = 1200, w = img.width, h = img.height;
+        if (w > MAX || h > MAX) { var s = Math.min(MAX/w, MAX/h); w = Math.round(w*s); h = Math.round(h*s); }
+        var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        var out;
+        try { out = cv.toDataURL('image/webp', 0.85); } catch (e) { out = cv.toDataURL('image/jpeg', 0.85); }
+        cb(out);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function renderSlot(slotEl) {
+    var id = slotEl.getAttribute('data-img-id');
+    var fit = slotEl.getAttribute('data-fit') || 'cover';
+    var ph = slotEl.getAttribute('data-ph') || 'Arrastra una imagen';
+    var data = loadImages()[id];
+    if (data) {
+      slotEl.classList.add('mi-filled');
+      slotEl.innerHTML = '<img class="mi-slot-img" src="'+data+'" style="object-fit:'+fit+';">';
+    } else {
+      slotEl.classList.remove('mi-filled');
+      slotEl.innerHTML = '<div class="mi-slot-ph">'
+        + '<div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>'+esc(ph)+'</div></div>';
+    }
+  }
+  function refreshSlots(id) {
+    document.querySelectorAll('image-slot[data-img-id="'+id+'"]').forEach(renderSlot);
+  }
+  function hydrateSlots(scope) {
+    scope.querySelectorAll('image-slot').forEach(function (slotEl) {
+      if (slotEl._wired) { renderSlot(slotEl); return; }
+      slotEl._wired = true;
+      renderSlot(slotEl);
+      var id = slotEl.getAttribute('data-img-id');
+      slotEl.addEventListener('click', function () {
+        var inp = document.createElement('input');
+        inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp,image/avif';
+        inp.onchange = function () { if (inp.files[0]) fileToDataUrl(inp.files[0], function (d) { saveImage(id, d); refreshSlots(id); }); };
+        inp.click();
+      });
+      slotEl.addEventListener('dragover', function (e) { e.preventDefault(); slotEl.classList.add('mi-dragover'); });
+      slotEl.addEventListener('dragleave', function () { slotEl.classList.remove('mi-dragover'); });
+      slotEl.addEventListener('drop', function (e) {
+        e.preventDefault(); slotEl.classList.remove('mi-dragover');
+        var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) fileToDataUrl(f, function (d) { saveImage(id, d); refreshSlots(id); });
+      });
+    });
+  }
+
+  // ---------- ARRANQUE ----------
+  render();
+})();
+</script>
+</body>
+</html>
