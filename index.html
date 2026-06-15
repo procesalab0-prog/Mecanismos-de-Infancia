@@ -52,7 +52,7 @@
 
   // ---------- DATOS ----------
   var PRODUCTS = [
-    { id:'MI-01', code:'MI-01', name:'Balero', tipo:'Balero · 2 en 1', cat:'Sets', precio:980, accent:'#D8421C', combo:true,
+    { id:'MI-01', code:'MI-01', name:'Balero', tipo:'Balero · 2 en 1', cat:'Sets', precio:980, accent:'#D8421C', combo:true, model3d:'models/balero.html',
       material:'Aluminio + latón', mecanismo:'Copa y bola con contrapeso', piezas:'2 piezas', edad:'6+', dim:'set de 2 baleros',
       shortDesc:'Set de dos baleros de metal que encajan entre sí.',
       desc:'El balero de siempre, ahora como un set de dos piezas de metal mecanizado que encajan entre sí. Copa torneada y bola con contrapeso calculado: difícil de dominar, imposible de soltar.' },
@@ -148,6 +148,17 @@
     return '<image-slot data-img-id="' + id + '" data-fit="' + (fit||'cover') + '" data-ph="' + esc(ph) + '" style="' + (style||'') + '"></image-slot>';
   }
 
+  // Devuelve el visor 3D (si el producto tiene model3d) o el slot de imagen.
+  // mode: 'full' (interactivo, con controles) | 'compact' (solo autogiro, para tarjetas)
+  function mediaFor(p, ph, fit, style, mode) {
+    if (p.model3d) {
+      mode = mode || 'compact';
+      var pe = mode === 'compact' ? 'pointer-events:none;' : '';
+      return '<iframe src="' + p.model3d + '?mode=' + mode + '" title="' + esc(p.name) + ' · modelo 3D" loading="lazy" scrolling="no" allowtransparency="true" style="display:block;border:0;background:transparent;' + pe + (style||'') + '"></iframe>';
+    }
+    return slot(imgIdOf(p), ph, fit, style);
+  }
+
   function footer() {
     return '<footer style="background:#161310;color:#F1EADB;padding:56px 26px 28px;">'
     + '<div style="max-width:1280px;margin:0 auto;display:flex;gap:44px;flex-wrap:wrap;justify-content:space-between;">'
@@ -227,7 +238,7 @@
       var p = byId(id);
       return '<div data-reveal style="background:#F1EADB;border:1.5px solid #161310;display:flex;flex-direction:column;overflow:hidden;">'
         + '<div style="position:relative;background:'+p.accent+';aspect-ratio:4/3;border-bottom:1.5px solid #161310;">'
-          + slot(imgIdOf(p), p.code+' · arrastra tu foto', 'cover', 'width:100%;height:100%;')
+          + mediaFor(p, p.code+' · arrastra tu foto', 'cover', 'width:100%;height:100%;', 'compact')
           + '<span style="position:absolute;top:11px;left:11px;font-family:\'Space Mono\',monospace;font-size:11px;background:#161310;color:#F1EADB;padding:3px 8px;letter-spacing:.04em;">'+p.code+'</span>'
         + '</div>'
         + '<div style="padding:16px 17px 17px;display:flex;flex-direction:column;flex:1;">'
@@ -261,7 +272,7 @@
             + '<div style="position:absolute;top:14px;left:14px;z-index:2;font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.05em;background:#161310;color:#F1EADB;padding:4px 9px;">'+hero.code+' / PIEZA DESTACADA</div>'
             + '<div style="position:absolute;top:14px;right:14px;z-index:2;animation:mi-spin 16s linear infinite;width:34px;height:34px;"><svg viewBox="0 0 64 64" fill="none" stroke="#F1EADB" stroke-width="3.5" stroke-linecap="round"><circle cx="32" cy="32" r="11"/><circle cx="32" cy="32" r="3.2" fill="#F1EADB" stroke="none"/><line x1="32" y1="9" x2="32" y2="17"/><line x1="32" y1="47" x2="32" y2="55"/><line x1="9" y1="32" x2="17" y2="32"/><line x1="47" y1="32" x2="55" y2="32"/><line x1="16" y1="16" x2="22" y2="22"/><line x1="42" y1="42" x2="48" y2="48"/><line x1="48" y1="16" x2="42" y2="22"/><line x1="22" y1="42" x2="16" y2="48"/></svg></div>'
             + '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:18px;min-height:330px;">'
-              + slot(imgIdOf(hero), 'Arrastra aquí la foto del juguete destacado', 'contain', 'width:100%;height:100%;min-height:300px;')
+              + mediaFor(hero, 'Arrastra aquí la foto del juguete destacado', 'contain', 'width:100%;height:100%;min-height:300px;', 'full')
             + '</div>'
             + '<div style="border-top:1.5px solid #161310;background:#F1EADB;padding:14px 16px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">'
               + '<div><div style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8a7d68;">'+hero.tipo+'</div>'
@@ -334,7 +345,7 @@
     var cards = filtered.map(function (p) {
       return '<div data-reveal style="background:#F1EADB;border:1.5px solid #161310;display:flex;flex-direction:column;overflow:hidden;">'
         + '<div style="position:relative;background:'+p.accent+';aspect-ratio:1;border-bottom:1.5px solid #161310;">'
-          + slot(imgIdOf(p), p.code+' · arrastra tu foto', 'cover', 'width:100%;height:100%;')
+          + mediaFor(p, p.code+' · arrastra tu foto', 'cover', 'width:100%;height:100%;', 'compact')
           + '<span style="position:absolute;top:11px;left:11px;font-family:\'Space Mono\',monospace;font-size:11px;background:#161310;color:#F1EADB;padding:3px 8px;letter-spacing:.04em;">'+p.code+'</span>'
           + '<span style="position:absolute;top:11px;right:11px;font-family:\'Space Mono\',monospace;font-size:10px;background:#F1EADB;color:#161310;border:1.5px solid #161310;padding:2px 7px;letter-spacing:.04em;">'+p.cat+'</span>'
         + '</div>'
@@ -396,8 +407,8 @@
       + '<section style="padding:40px 26px 60px;">'
         + '<div style="max-width:1280px;margin:0 auto;display:flex;gap:48px;flex-wrap:wrap;">'
           + '<div style="flex:1.1;min-width:300px;position:relative;background:'+p.accent+';border:1.5px solid #161310;display:flex;align-items:center;justify-content:center;padding:24px;min-height:440px;">'
-            + '<span style="position:absolute;top:14px;left:14px;font-family:\'Space Mono\',monospace;font-size:11px;background:#161310;color:#F1EADB;padding:4px 9px;letter-spacing:.05em;">'+p.code+'</span>'
-            + slot(imgIdOf(p), 'Arrastra la foto de '+p.name, 'contain', 'width:100%;height:100%;min-height:400px;')
+            + '<span style="position:absolute;top:14px;left:14px;z-index:3;font-family:\'Space Mono\',monospace;font-size:11px;background:#161310;color:#F1EADB;padding:4px 9px;letter-spacing:.05em;">'+p.code+'</span>'
+            + mediaFor(p, 'Arrastra la foto de '+p.name, 'contain', 'width:100%;height:100%;min-height:400px;', 'full')
           + '</div>'
           + '<div style="flex:.9;min-width:300px;display:flex;flex-direction:column;">'
             + '<div style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.09em;color:#8a7d68;text-transform:uppercase;">'+p.tipo+'</div>'
