@@ -75,16 +75,17 @@
   ];
 
   var TEAM = [
-    { code:'01', nombre:'Emmanuel Juárez', iniciales:'EJ', color:'#D8421C', fg:'#F1EADB', rol:'Diseño industrial', prod:'MI-01' },
-    { code:'02', nombre:'Natalia Perez', iniciales:'NP', color:'#E7A833', fg:'#161310', rol:'Programación CNC', prod:'MI-04' },
-    { code:'03', nombre:'Regina Rocha González', iniciales:'RR', color:'#1C6B52', fg:'#F1EADB', rol:'Modelado 3D', prod:'MI-02' },
-    { code:'04', nombre:'Iran Osorio', iniciales:'IO', color:'#D6336C', fg:'#F1EADB', rol:'Acabados y pulido', prod:'MI-01' },
-    { code:'05', nombre:'Cynthia Espinoza', iniciales:'CE', color:'#1C9B9B', fg:'#F1EADB', rol:'Ensamble', prod:'MI-05' },
-    { code:'06', nombre:'Andrea Piña', iniciales:'AP', color:'#161310', fg:'#F1EADB', rol:'Identidad y empaque', prod:'MI-03' }
+    { code:'01', nombre:'Emmanuel Juárez', iniciales:'EJ', color:'#D8421C', fg:'#F1EADB', rol:'Dibujo · CNC · Ensamble', prod:'MI-01' },
+    { code:'02', nombre:'Natalia Perez', iniciales:'NP', color:'#E7A833', fg:'#161310', rol:'Dibujo · CNC · Ensamble', prod:'MI-04' },
+    { code:'03', nombre:'Regina Rocha González', iniciales:'RR', color:'#1C6B52', fg:'#F1EADB', rol:'Dibujo · CNC · Ensamble', prod:'MI-02' },
+    { code:'04', nombre:'Iran Osorio', iniciales:'IO', color:'#D6336C', fg:'#F1EADB', rol:'Dibujo · CNC · Ensamble', prod:'MI-01' },
+    { code:'05', nombre:'Cynthia Espinoza', iniciales:'CE', color:'#1C9B9B', fg:'#F1EADB', rol:'Dibujo · CNC · Ensamble', prod:'MI-05' },
+    { code:'06', nombre:'Andrea Piña', iniciales:'AP', color:'#161310', fg:'#F1EADB', rol:'Dibujo · CNC · Ensamble', prod:'MI-03' }
   ];
 
   // ---------- ESTADO ----------
   var state = { view:'inicio', selectedId:'MI-01', cart:[], cartOpen:false, cat:'Todos', ordered:false, narrow:false };
+  var heroIdx = 0;   // índice de la "pieza destacada" del hero (rota cada cierto tiempo)
 
   try { var s = localStorage.getItem('mi-cart'); if (s) state.cart = JSON.parse(s) || []; } catch (e) {}
 
@@ -231,8 +232,24 @@
   }
 
   // ---------- VISTA: INICIO ----------
+  // Panel de "pieza destacada" del hero (cambia solo cada cierto tiempo)
+  function heroFeaturePanel(p) {
+    return '<div id="mi-hero-feature" style="flex:.9;min-width:300px;position:relative;background:'+p.accent+';border:1.5px solid #161310;display:flex;flex-direction:column;opacity:0;transition:opacity .45s ease;">'
+      + '<div style="position:absolute;top:14px;left:14px;z-index:2;font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.05em;background:#161310;color:#F1EADB;padding:4px 9px;">'+p.code+' / PIEZA DESTACADA</div>'
+      + '<div style="position:absolute;top:14px;right:14px;z-index:2;animation:mi-spin 16s linear infinite;width:34px;height:34px;"><svg viewBox="0 0 64 64" fill="none" stroke="#F1EADB" stroke-width="3.5" stroke-linecap="round"><circle cx="32" cy="32" r="11"/><circle cx="32" cy="32" r="3.2" fill="#F1EADB" stroke="none"/><line x1="32" y1="9" x2="32" y2="17"/><line x1="32" y1="47" x2="32" y2="55"/><line x1="9" y1="32" x2="17" y2="32"/><line x1="47" y1="32" x2="55" y2="32"/><line x1="16" y1="16" x2="22" y2="22"/><line x1="42" y1="42" x2="48" y2="48"/><line x1="48" y1="16" x2="42" y2="22"/><line x1="22" y1="42" x2="16" y2="48"/></svg></div>'
+      + '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:18px;min-height:330px;">'
+        + mediaFor(p, 'Arrastra aquí la foto del juguete destacado', 'contain', 'width:100%;height:100%;min-height:300px;', 'full')
+      + '</div>'
+      + '<div style="border-top:1.5px solid #161310;background:#F1EADB;padding:14px 16px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">'
+        + '<div><div style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8a7d68;">'+p.tipo+'</div>'
+        + '<div style="font-family:Archivo;font-weight:800;font-size:27px;letter-spacing:-.03em;line-height:1;margin-top:2px;">'+p.name+'</div></div>'
+        + '<button data-action="open-product" data-id="'+p.id+'" style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;background:#D8421C;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:10px 14px;white-space:nowrap;">Ver →</button>'
+      + '</div>'
+    + '</div>';
+  }
+
   function viewInicio() {
-    var hero = byId('MI-01');
+    var hero = PRODUCTS[heroIdx];
     var featuredIds = ['MI-01','MI-03','MI-02'];
     var cards = featuredIds.map(function (id) {
       var p = byId(id);
@@ -262,32 +279,21 @@
               + '<span style="width:9px;height:9px;background:#D8421C;border-radius:50%;display:inline-block;animation:mi-blink 2s ease-in-out infinite;"></span>EST. 2026 · HECHO EN MÉXICO · CNC + METAL</div>'
             + '<h1 data-reveal style="font-family:Archivo;font-weight:900;font-size:clamp(44px,7.6cqw,108px);line-height:.82;letter-spacing:-.045em;margin:0;text-wrap:balance;">MECANISMOS<br>DE <span style="display:inline-block;color:#D8421C;animation:infancia-loop 8s steps(1,end) infinite;">INFANCIA</span></h1>'
             + '<p data-reveal style="font-family:Archivo;font-weight:800;font-size:clamp(17px,2cqw,25px);letter-spacing:-.02em;line-height:1.12;margin:16px 0 0;color:#161310;">Juguetes mexicanos que <span style="color:#D8421C;">son mecanismos</span>.</p>'
-            + '<p data-reveal style="font-family:Archivo;font-weight:500;font-size:clamp(16px,1.5cqw,20px);line-height:1.45;max-width:30em;margin:14px 0 0;color:#3a3128;">Rescatamos el juego tradicional mexicano —el trompo, el balero, el alebrije— y lo reinventamos en metal con precisión CNC: aluminio, latón y acero mecanizados. Cada pieza es un mecanismo; cada mecanismo, un recuerdo.</p>'
+            + '<p data-reveal style="font-family:Archivo;font-weight:500;font-size:clamp(16px,1.5cqw,20px);line-height:1.45;max-width:30em;margin:14px 0 0;color:#3a3128;">Rescatamos el juego tradicional mexicano —el trompo, el balero, el alebrije— y lo reinventamos en metal con precisión CNC: aluminio mecanizado. Cada pieza es un mecanismo; cada mecanismo, un recuerdo.</p>'
             + '<div data-reveal style="display:flex;gap:14px;flex-wrap:wrap;margin-top:32px;">'
               + '<button data-action="go-catalogo" style="font-family:\'Space Mono\',monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;background:#161310;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:15px 26px;">Ver catálogo →</button>'
               + '<button data-action="go-nosotros" style="font-family:\'Space Mono\',monospace;font-size:13px;letter-spacing:.06em;text-transform:uppercase;background:none;color:#161310;border:1.5px solid #161310;cursor:pointer;padding:15px 26px;">Nuestra historia</button>'
             + '</div>'
           + '</div>'
-          + '<div data-reveal style="flex:.9;min-width:300px;position:relative;background:#D8421C;border:1.5px solid #161310;display:flex;flex-direction:column;">'
-            + '<div style="position:absolute;top:14px;left:14px;z-index:2;font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.05em;background:#161310;color:#F1EADB;padding:4px 9px;">'+hero.code+' / PIEZA DESTACADA</div>'
-            + '<div style="position:absolute;top:14px;right:14px;z-index:2;animation:mi-spin 16s linear infinite;width:34px;height:34px;"><svg viewBox="0 0 64 64" fill="none" stroke="#F1EADB" stroke-width="3.5" stroke-linecap="round"><circle cx="32" cy="32" r="11"/><circle cx="32" cy="32" r="3.2" fill="#F1EADB" stroke="none"/><line x1="32" y1="9" x2="32" y2="17"/><line x1="32" y1="47" x2="32" y2="55"/><line x1="9" y1="32" x2="17" y2="32"/><line x1="47" y1="32" x2="55" y2="32"/><line x1="16" y1="16" x2="22" y2="22"/><line x1="42" y1="42" x2="48" y2="48"/><line x1="48" y1="16" x2="42" y2="22"/><line x1="22" y1="42" x2="16" y2="48"/></svg></div>'
-            + '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:18px;min-height:330px;">'
-              + mediaFor(hero, 'Arrastra aquí la foto del juguete destacado', 'contain', 'width:100%;height:100%;min-height:300px;', 'full')
-            + '</div>'
-            + '<div style="border-top:1.5px solid #161310;background:#F1EADB;padding:14px 16px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">'
-              + '<div><div style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8a7d68;">'+hero.tipo+'</div>'
-              + '<div style="font-family:Archivo;font-weight:800;font-size:27px;letter-spacing:-.03em;line-height:1;margin-top:2px;">'+hero.name+'</div></div>'
-              + '<button data-action="open-product" data-id="'+hero.id+'" style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;background:#D8421C;color:#F1EADB;border:1.5px solid #161310;cursor:pointer;padding:10px 14px;white-space:nowrap;">Ver →</button>'
-            + '</div>'
-          + '</div>'
+          + heroFeaturePanel(hero)
         + '</div>'
         + glyphStrip()
       + '</section>'
       // MARQUEE
       + '<div style="overflow:hidden;background:#161310;border-bottom:1.5px solid #161310;padding:11px 0;">'
         + '<div style="display:flex;width:max-content;animation:mi-marquee 24s linear infinite;">'
-          + '<span style="font-family:\'Space Mono\',monospace;font-size:14px;letter-spacing:.14em;color:#F1EADB;white-space:nowrap;">PRECISIÓN CNC&nbsp;&nbsp;✳&nbsp;&nbsp;ALUMINIO · LATÓN · ACERO&nbsp;&nbsp;✳&nbsp;&nbsp;DISEÑO MEXICANO&nbsp;&nbsp;✳&nbsp;&nbsp;JUEGO QUE DURA&nbsp;&nbsp;✳&nbsp;&nbsp;HECHO EN MÉXICO&nbsp;&nbsp;✳&nbsp;&nbsp;</span>'
-          + '<span style="font-family:\'Space Mono\',monospace;font-size:14px;letter-spacing:.14em;color:#F1EADB;white-space:nowrap;">PRECISIÓN CNC&nbsp;&nbsp;✳&nbsp;&nbsp;ALUMINIO · LATÓN · ACERO&nbsp;&nbsp;✳&nbsp;&nbsp;DISEÑO MEXICANO&nbsp;&nbsp;✳&nbsp;&nbsp;JUEGO QUE DURA&nbsp;&nbsp;✳&nbsp;&nbsp;HECHO EN MÉXICO&nbsp;&nbsp;✳&nbsp;&nbsp;</span>'
+          + '<span style="font-family:\'Space Mono\',monospace;font-size:14px;letter-spacing:.14em;color:#F1EADB;white-space:nowrap;">PRECISIÓN CNC&nbsp;&nbsp;✳&nbsp;&nbsp;ALUMINIO&nbsp;&nbsp;✳&nbsp;&nbsp;DISEÑO MEXICANO&nbsp;&nbsp;✳&nbsp;&nbsp;JUEGO QUE DURA&nbsp;&nbsp;✳&nbsp;&nbsp;HECHO EN MÉXICO&nbsp;&nbsp;✳&nbsp;&nbsp;</span>'
+          + '<span style="font-family:\'Space Mono\',monospace;font-size:14px;letter-spacing:.14em;color:#F1EADB;white-space:nowrap;">PRECISIÓN CNC&nbsp;&nbsp;✳&nbsp;&nbsp;ALUMINIO&nbsp;&nbsp;✳&nbsp;&nbsp;DISEÑO MEXICANO&nbsp;&nbsp;✳&nbsp;&nbsp;JUEGO QUE DURA&nbsp;&nbsp;✳&nbsp;&nbsp;HECHO EN MÉXICO&nbsp;&nbsp;✳&nbsp;&nbsp;</span>'
         + '</div>'
       + '</div>'
       // DESTACADOS
@@ -458,13 +464,13 @@
         + '<div style="max-width:1100px;margin:0 auto;">'
           + '<div data-reveal style="display:flex;align-items:center;gap:11px;font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.14em;color:#D6336C;margin-bottom:14px;"><svg width="24" height="24" viewBox="0 0 64 64" fill="#D6336C"><circle cx="20" cy="22" r="9"/><circle cx="44" cy="22" r="9"/><path d="M4 52c0-9 7-16 16-16s16 7 16 16z"/><path d="M28 52c0-9 7-16 16-16s16 7 16 16z"/></svg>QUIÉNES SOMOS</div>'
           + '<h1 data-reveal style="font-family:Archivo;font-weight:900;font-size:clamp(40px,6.4cqw,88px);letter-spacing:-.045em;line-height:.88;margin:0;">EL JUEGO TAMBIÉN<br>ES <span style="color:#D8421C;">INGENIERÍA.</span></h1>'
-          + '<p data-reveal style="font-family:Archivo;font-weight:500;font-size:clamp(17px,1.7cqw,21px);line-height:1.55;max-width:42em;margin:30px 0 0;color:#3a3128;">Mecanismos de Infancia nació en un taller, entre virutas de metal y líneas de código. Somos seis estudiantes que tomamos los juguetes con los que crecimos y los volvimos a dibujar pieza por pieza, para mecanizarlos en metal —aluminio, latón y acero— con una fresadora CNC. El resultado: objetos que se mueven, que duran, y que cargan un pedazo de México en cada engrane.</p>'
+          + '<p data-reveal style="font-family:Archivo;font-weight:500;font-size:clamp(17px,1.7cqw,21px);line-height:1.55;max-width:42em;margin:30px 0 0;color:#3a3128;">Mecanismos de Infancia nació en un taller, entre virutas de metal y líneas de código. Somos seis estudiantes que tomamos los juguetes con los que crecimos y los volvimos a dibujar pieza por pieza, para mecanizarlos en aluminio con una fresadora CNC. El resultado: objetos que se mueven, que duran, y que cargan un pedazo de México en cada engrane.</p>'
         + '</div>'
       + '</section>'
       + '<section style="padding:0;border-bottom:1.5px solid #161310;">'
         + '<div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">'
           + valor('#D8421C','<circle cx="32" cy="32" r="12"/><line x1="32" y1="6" x2="32" y2="18"/><line x1="32" y1="46" x2="32" y2="58"/><line x1="6" y1="32" x2="18" y2="32"/><line x1="46" y1="32" x2="58" y2="32"/>','Precisión que se siente','Cada corte está calculado al décimo de milímetro.', true)
-          + valor('#1C6B52','<path d="M32 8 C20 22 20 38 32 56 C44 38 44 22 32 8 Z"/><line x1="32" y1="20" x2="32" y2="50"/>','Metal que perdura','Aluminio, latón y acero, no plástico.', true)
+          + valor('#1C6B52','<path d="M32 8 C20 22 20 38 32 56 C44 38 44 22 32 8 Z"/><line x1="32" y1="20" x2="32" y2="50"/>','Metal que perdura','Aluminio macizo, no plástico.', true)
           + valor('#D6336C','<circle cx="32" cy="32" r="18"/><circle cx="26" cy="28" r="2.6" fill="#D6336C" stroke="none"/><circle cx="38" cy="28" r="2.6" fill="#D6336C" stroke="none"/><path d="M25 40 Q32 46 39 40"/>','Diseño nuestro','Formas que vienen de nuestra propia memoria.', true)
           + valor('#E7A833','<circle cx="24" cy="28" r="9"/><circle cx="42" cy="36" r="9"/>','Hecho para durar','Juguetes que pasan de mano en mano.', false)
         + '</div>'
@@ -561,7 +567,28 @@
     app.innerHTML = nav() + body + cartDrawer();
     hydrateSlots(app);
     setupReveal(app);
+    requestAnimationFrame(function () { var h = document.getElementById('mi-hero-feature'); if (h) h.style.opacity = '1'; });
   }
+
+  // Rota la "pieza destacada" del hero cada cierto tiempo (sin recargar el resto de la página)
+  function cycleHero() {
+    if (state.view !== 'inicio' || state.cartOpen) return;
+    var el = document.getElementById('mi-hero-feature');
+    if (!el) return;
+    el.style.opacity = '0';
+    setTimeout(function () {
+      heroIdx = (heroIdx + 1) % PRODUCTS.length;
+      var cur = document.getElementById('mi-hero-feature');
+      if (!cur) return;
+      var holder = document.createElement('div');
+      holder.innerHTML = heroFeaturePanel(PRODUCTS[heroIdx]);
+      var node = holder.firstElementChild;
+      cur.parentNode.replaceChild(node, cur);
+      hydrateSlots(document.getElementById('mi-app'));
+      requestAnimationFrame(function () { node.style.opacity = '1'; });
+    }, 450);
+  }
+  setInterval(cycleHero, 5000);
 
   // ---------- EVENTOS (delegación) ----------
   document.addEventListener('click', function (e) {
