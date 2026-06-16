@@ -60,10 +60,10 @@
       material:'Aluminio', mecanismo:'Cuerpo acampanado, punta torneada', piezas:'1 pieza', edad:'4+', dim:'Ø 5.3 × 6.5 cm',
       shortDesc:'Pirinola torneada en metal pulido, de cuerpo acampanado.',
       desc:'Nuestra pirinola reinterpretada como una pieza torneada en metal: cabeza acampanada con una copa cóncava en la cara, vástago esbelto y punta para hacerla bailar. Pulida a espejo y balanceada al torno para que gire parejo y por mucho tiempo sobre cualquier mesa.' },
-    { id:'MI-03', code:'MI-03', name:'Yoyo', tipo:'Yoyo de precisión', cat:'Destreza', precio:420, accent:'#E7A833',
-      material:'Aluminio', mecanismo:'Rodamiento de bolas', piezas:'4 piezas', edad:'6+', dim:'Ø 6 × 4 cm',
-      shortDesc:'Yoyo con rodamiento que duerme largo.',
-      desc:'Un yoyo de precisión con rodamiento de bolas en aluminio anodizado: duerme largo, responde al menor tirón y vuelve solo a tu mano.' },
+    { id:'MI-03', code:'MI-03', name:'Yoyo', tipo:'Yoyo torneado', cat:'Destreza', precio:420, accent:'#E7A833', model3d:'models/yoyo.html',
+      material:'Aluminio', mecanismo:'Eje central y garganta para la cuerda', piezas:'1 pieza', edad:'6+', dim:'Ø 4 × 6 cm',
+      shortDesc:'Yoyo de aluminio torneado, de dos discos y eje central.',
+      desc:'Yoyo torneado en aluminio macizo: dos discos unidos por un eje central estrecho —la garganta donde se enrolla la cuerda— con una marca de centro en cada cara. Balanceado para que duerma largo y vuelva solo a tu mano.' },
     { id:'MI-04', code:'MI-04', name:'Trompo', tipo:'Trompo torneado', cat:'Giratorios', precio:360, accent:'#D6336C', model3d:'models/trompo.html',
       material:'Aluminio', mecanismo:'Cuerpo cónico balanceado, punta torneada', piezas:'1 pieza', edad:'5+', dim:'Ø 3 × 6.6 cm',
       shortDesc:'Trompo torneado en aluminio, de cuerpo cónico y punta para bailar.',
@@ -76,11 +76,11 @@
 
   var TEAM = [
     { code:'01', nombre:'Emmanuel Juárez', iniciales:'EJ', color:'#D8421C', fg:'#F1EADB', rol:'Diseño industrial', prod:'MI-01' },
-    { code:'02', nombre:'Natalia Perez', iniciales:'NP', color:'#E7A833', fg:'#161310', rol:'Programación CNC', prod:'MI-01' },
+    { code:'02', nombre:'Natalia Perez', iniciales:'NP', color:'#E7A833', fg:'#161310', rol:'Programación CNC', prod:'MI-04' },
     { code:'03', nombre:'Regina Rocha González', iniciales:'RR', color:'#1C6B52', fg:'#F1EADB', rol:'Modelado 3D', prod:'MI-02' },
-    { code:'04', nombre:'Iran Osorio', iniciales:'IO', color:'#D6336C', fg:'#F1EADB', rol:'Acabados y pulido', prod:'MI-03' },
-    { code:'05', nombre:'Cynthia Espinoza', iniciales:'CE', color:'#1C9B9B', fg:'#F1EADB', rol:'Ensamble', prod:'MI-04' },
-    { code:'06', nombre:'Andrea Piña', iniciales:'AP', color:'#161310', fg:'#F1EADB', rol:'Identidad y empaque', prod:'MI-05' }
+    { code:'04', nombre:'Iran Osorio', iniciales:'IO', color:'#D6336C', fg:'#F1EADB', rol:'Acabados y pulido', prod:'MI-01' },
+    { code:'05', nombre:'Cynthia Espinoza', iniciales:'CE', color:'#1C9B9B', fg:'#F1EADB', rol:'Ensamble', prod:'MI-05' },
+    { code:'06', nombre:'Andrea Piña', iniciales:'AP', color:'#161310', fg:'#F1EADB', rol:'Identidad y empaque', prod:'MI-03' }
   ];
 
   // ---------- ESTADO ----------
@@ -308,9 +308,8 @@
           + '<h2 data-reveal style="font-family:Archivo;font-weight:900;font-size:clamp(34px,4.8cqw,64px);letter-spacing:-.04em;line-height:.9;margin:0 0 38px;">DEL ARCHIVO<br>A LA MANO</h2>'
           + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;border:1.5px solid #F1EADB;">'
             + procesoStep('01','<rect x="12" y="10" width="40" height="44"/><line x1="20" y1="22" x2="44" y2="22"/><line x1="20" y1="32" x2="38" y2="32"/><line x1="20" y1="42" x2="34" y2="42"/>','Dibujo','Cada juguete empieza como un plano en CAD, pieza por pieza.', true)
-            + procesoStep('02','<circle cx="32" cy="32" r="10"/><circle cx="32" cy="32" r="3" fill="#F1EADB" stroke="none"/><line x1="32" y1="8" x2="32" y2="16"/><line x1="32" y1="48" x2="32" y2="56"/><line x1="8" y1="32" x2="16" y2="32"/><line x1="48" y1="32" x2="56" y2="32"/><line x1="15" y1="15" x2="20" y2="20"/><line x1="44" y1="44" x2="49" y2="49"/><line x1="49" y1="15" x2="44" y2="20"/><line x1="20" y1="44" x2="15" y2="49"/>','Fresado CNC','La fresadora mecaniza el metal al décimo de milímetro.', true)
-            + procesoStep('03','<path d="M14 50 L40 24 L48 32 L22 58 Z" transform="translate(-2 -6)"/><line x1="40" y1="18" x2="48" y2="26"/>','Acabado','Pulido y anodizado a mano, sin prisa, pieza por pieza.', true)
-            + procesoStep('04','<circle cx="24" cy="26" r="10"/><circle cx="42" cy="38" r="10"/>','Ensamble','Cada mecanismo se arma y se prueba antes de salir del taller.', false)
+            + procesoStep('02','<circle cx="32" cy="32" r="10"/><circle cx="32" cy="32" r="3" fill="#F1EADB" stroke="none"/><line x1="32" y1="8" x2="32" y2="16"/><line x1="32" y1="48" x2="32" y2="56"/><line x1="8" y1="32" x2="16" y2="32"/><line x1="48" y1="32" x2="56" y2="32"/><line x1="15" y1="15" x2="20" y2="20"/><line x1="44" y1="44" x2="49" y2="49"/><line x1="49" y1="15" x2="44" y2="20"/><line x1="20" y1="44" x2="15" y2="49"/>','CNC','La fresadora mecaniza el metal al décimo de milímetro.', true)
+            + procesoStep('03','<circle cx="24" cy="26" r="10"/><circle cx="42" cy="38" r="10"/>','Ensamble','Cada mecanismo se arma y se prueba antes de salir del taller.', false)
           + '</div>'
         + '</div>'
       + '</section>'

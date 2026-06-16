@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Yoyo — modelo 3D</title>
+<style>
+  :root{ --panel:rgba(16,21,28,.78); --line:rgba(255,255,255,.12); --txt:#e9eef3; --accent:#7fd1c7; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:transparent;
+    font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--txt)}
+  #app{position:fixed;inset:0} canvas{display:block;touch-action:none}
+  .controls{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:10;
+    display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  body.compact .controls{display:none}
+  button{font-family:inherit;font-size:11.5px;color:var(--txt);background:var(--panel);
+    border:1px solid var(--line);border-radius:999px;padding:9px 14px;cursor:pointer;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:.15s}
+  button:hover{border-color:var(--accent);color:#fff}
+  button.off{opacity:.55}
+  .badge{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:middle}
+  button.off .badge{background:#5a6470}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="controls">
+  <button id="btnBag"><span class="badge"></span>Bolsa</button>
+  <button id="btnRot"><span class="badge"></span>Girar</button>
+  <button id="btnReset">Reiniciar vista</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const PARAMS = new URLSearchParams(location.search);
+const COMPACT = PARAMS.get('mode') === 'compact';
+if (COMPACT) document.body.classList.add('compact');
+
+const app = document.getElementById('app');
+let renderer, scene, camera, piece, bag, band, ground, envRTtex;
+
+const S = 30;                 // escala plano -> mundo
+const Lhalf = 2.0*S/2;        // media longitud = 30
+const target = new THREE.Vector3(0, 0, 0);
+const cam = { r:185, theta:0.20, phi:1.28 };
+const camGoal = { r:185, theta:0.20, phi:1.28 };
+const CAM_DEFAULT = { r:185, theta:0.20, phi:1.28 };
+let autoRotate = true;
+
+// envolvente exterior (y axial, r radio) en unidades del plano
+const PROF = [
+  [0.00,0.532],[0.30,0.675],[0.80,0.675],[0.845,0.620],[0.846,0.205],
+  [0.94,0.205],[0.965,0.075],[1.035,0.075],[1.06,0.205],[1.154,0.205],
+  [1.155,0.620],[1.20,0.675],[1.70,0.675],[2.00,0.532]
+];
+
+init(); buildScene(); animate();
+
+function init(){
+  renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setClearColor(0x000000, 0);                 // transparente: deja ver el bloque de color de la tienda
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  app.appendChild(renderer.domElement);
+  scene = new THREE.Scene(); scene.background = null;   // sin fondo opaco
+  camera = new THREE.PerspectiveCamera(35, innerWidth/innerHeight, 0.5, 4000);
+  const pmrem = new THREE.PMREMGenerator(renderer); pmrem.compileEquirectangularShader();
+  const envTex = new THREE.CanvasTexture(makeEnvCanvas());
+  envTex.mapping = THREE.EquirectangularReflectionMapping;
+  envRTtex = pmrem.fromEquirectangular(envTex).texture; scene.environment = envRTtex; envTex.dispose();
+  addLights(); addEventListener('resize', onResize); bindControls();
+}
+function addLights(){
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x39404f, 0.55));
+  const key=new THREE.DirectionalLight(0xffffff,2.0); key.position.set(70,150,160); key.castShadow=true;
+  key.shadow.mapSize.set(2048,2048); key.shadow.camera.near=20; key.shadow.camera.far=600;
+  const d=110; key.shadow.camera.left=-d;key.shadow.camera.right=d;key.shadow.camera.top=d;key.shadow.camera.bottom=-d;
+  key.shadow.bias=-0.0004; key.shadow.radius=6; scene.add(key);
+  const fill=new THREE.DirectionalLight(0xcdd9ff,0.55); fill.position.set(-120,50,-30); scene.add(fill);
+  const g1=new THREE.PointLight(0xffffff,0.7,700); g1.position.set(-50,110,90); scene.add(g1);
+  const g2=new THREE.PointLight(0xfff3e0,0.5,700); g2.position.set(80,-10,110); scene.add(g2);
+}
+function makeEnvCanvas(){
+  const c=document.createElement('canvas');c.width=1024;c.height=512;const ctx=c.getContext('2d');
+  const g=ctx.createLinearGradient(0,0,0,512);
+  g.addColorStop(0,'#cdd6e0');g.addColorStop(.5,'#9aa6b4');g.addColorStop(1,'#566173');
+  ctx.fillStyle=g;ctx.fillRect(0,0,1024,512);
+  const blob=(x,y,r,a)=>{const rg=ctx.createRadialGradient(x,y,0,x,y,r);
+    rg.addColorStop(0,`rgba(255,255,255,${a})`);rg.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=rg;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();};
+  blob(250,120,150,.9);blob(720,90,120,.8);blob(520,260,90,.5);blob(880,300,110,.6);return c;
+}
+
+function buildScene(){
+  piece=makePiece(); scene.add(piece);
+  const b=makeBag(); bag=b.bag; band=b.band; scene.add(bag); scene.add(band);
+  ground=new THREE.Mesh(new THREE.PlaneGeometry(1400,1400), new THREE.ShadowMaterial({opacity:0.22}));
+  ground.rotation.x=-Math.PI/2; ground.position.y=-35; ground.receiveShadow=true; scene.add(ground);
+}
+
+/* ----- Pieza: perfil de revolución (yoyo, sólido único) ----- */
+function makePiece(){
+  const pt=(r,y)=>new THREE.Vector2(r*S, y*S);
+  const P=[
+    pt(0.00,-0.03), pt(0.05,0.00),            // pip de centro (cara izq)
+    pt(0.532,0.00),                            // cara exterior
+    pt(0.675,0.30), pt(0.675,0.80),            // chaflán + banda cilíndrica
+    pt(0.620,0.845), pt(0.205,0.846),          // bisel interior + cara anular
+    pt(0.205,0.94), pt(0.075,0.965),           // hombro + bajada al eje
+    pt(0.075,1.035),                           // eje (garganta)
+    pt(0.205,1.06), pt(0.205,1.154),           // hombro derecho
+    pt(0.620,1.155), pt(0.675,1.20),           // cara anular + chaflán
+    pt(0.675,1.70), pt(0.532,2.00),            // banda + chaflán exterior
+    pt(0.05,2.00), pt(0.00,2.03)               // pip de centro (cara der)
+  ];
+  const geo=new THREE.LatheGeometry(P, 220);
+  geo.translate(0, -Lhalf, 0);
+  geo.rotateZ(-Math.PI/2);
+  geo.computeVertexNormals();
+  const mat=new THREE.MeshStandardMaterial({
+    color:0xc9cdd2, metalness:0.9, roughness:0.30, envMapIntensity:1.15, side:THREE.DoubleSide
+  });
+  const m=new THREE.Mesh(geo,mat); m.castShadow=true; m.receiveShadow=true; return m;
+}
+
+/* ----- Bolsa plana de celofán que sigue la silueta ----- */
+function makeBag(){
+  const NU=170, NV=150;
+  const W=82, H=58;
+  const sstep=(a,b,x)=>{x=Math.min(1,Math.max(0,(x-a)/(b-a)));return x*x*(3-2*x);};
+  function pr(x){
+    let a=(x + Lhalf)/S; a=Math.min(2.0, Math.max(0, a));
+    if(a<=PROF[0][0]) return PROF[0][1]*S;
+    for(let i=1;i<PROF.length;i++){ if(a<=PROF[i][0]){
+      const [a0,r0]=PROF[i-1], [a1,r1]=PROF[i]; const t=(a-a0)/(a1-a0); return (r0+(r1-r0)*t)*S; } }
+    return PROF[PROF.length-1][1]*S;
+  }
+  function wrinkle(u,v){
+    return 0.5*Math.sin(0.08*u+0.5)+0.42*Math.sin(0.07*v-0.8)
+         +0.28*Math.sin(0.13*u+0.10*v)+0.18*Math.sin(0.19*v+1.7);
+  }
+  function halfH(u,v){
+    const au=Math.abs(u), av=Math.abs(v);
+    const edge=(1-sstep(W/2-9,W/2,au))*(1-sstep(H/2-8,H/2,av));
+    if(edge<=0) return 0;
+    const xPres=1-sstep(Lhalf+1, Lhalf+7, au);
+    const rp=pr(u);
+    const rr=rp*rp-v*v; const yProf=rr>0?Math.sqrt(rr):0;
+    const bulge=xPres*yProf;
+    const gap=xPres*2.0*(1-sstep(rp,rp+6,av));
+    const film=0.8;
+    const w=wrinkle(u,v)*(0.55+0.8*(1-xPres));
+    return Math.max(0,edge*(film+bulge+gap+w));
+  }
+  const pos=[], idx=[];
+  for(let s=0;s<2;s++){
+    const sign=s===0?1:-1; const base=pos.length/3;
+    for(let j=0;j<=NV;j++){ const v=-H/2+H*(j/NV);
+      for(let i=0;i<=NU;i++){ const u=-W/2+W*(i/NU); pos.push(u,v,sign*halfH(u,v)); } }
+    const row=NU+1;
+    for(let j=0;j<NV;j++) for(let i=0;i<NU;i++){
+      const a=base+j*row+i,b=a+1,c=a+row,d=c+1;
+      if(sign>0) idx.push(a,c,b,b,c,d); else idx.push(a,b,c,b,d,c);
+    }
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  const mat=new THREE.MeshPhysicalMaterial({
+    color:0xffffff, metalness:0, roughness:0.07, transmission:0.96, thickness:1.5, ior:1.46,
+    clearcoat:1.0, clearcoatRoughness:0.06, attenuationColor:0xeef5f2, attenuationDistance:220,
+    transparent:true, opacity:1.0, side:THREE.DoubleSide, envMapIntensity:1.5
+  });
+  const bagMesh=new THREE.Mesh(geo,mat); bagMesh.castShadow=true;
+  const group=new THREE.Group();
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(4.8,1.0,12,48),
+    new THREE.MeshStandardMaterial({color:0xb7bec5,metalness:0.25,roughness:0.6}));
+  ring.position.set(0,H/2-9,0); group.add(ring);
+  const seal=new THREE.Mesh(new THREE.PlaneGeometry(W-16,4.5),
+    new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:0.4,transmission:0.55,transparent:true,opacity:0.45,side:THREE.DoubleSide}));
+  seal.position.set(0,H/2-19,1.4); group.add(seal);
+  return {bag:bagMesh, band:group};
+}
+
+/* ----- Órbita manual ----- */
+function bindControls(){
+  const el=renderer.domElement;
+  if(COMPACT){ autoRotate=true; return; }   // tarjetas: solo autogiro, sin capturar scroll/clic
+
+  let drag=false,lx=0,ly=0,pinch=0;
+  el.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;autoRotate=false;syncRot();el.setPointerCapture(e.pointerId);});
+  el.addEventListener('pointermove',e=>{if(!drag)return;
+    camGoal.theta-=(e.clientX-lx)*0.006;camGoal.phi-=(e.clientY-ly)*0.006;
+    camGoal.phi=Math.max(0.18,Math.min(2.95,camGoal.phi));lx=e.clientX;ly=e.clientY;});
+  el.addEventListener('pointerup',()=>drag=false); el.addEventListener('pointercancel',()=>drag=false);
+  el.addEventListener('wheel',e=>{e.preventDefault();camGoal.r*=(1+Math.sign(e.deltaY)*0.08);camGoal.r=Math.max(70,Math.min(320,camGoal.r));},{passive:false});
+  el.addEventListener('touchstart',e=>{if(e.touches.length===2)pinch=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);},{passive:true});
+  el.addEventListener('touchmove',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pinch){camGoal.r*=pinch/d;camGoal.r=Math.max(70,Math.min(320,camGoal.r));}pinch=d;}},{passive:true});
+  document.getElementById('btnBag').addEventListener('click',e=>{const v=!bag.visible;bag.visible=v;band.visible=v;e.currentTarget.classList.toggle('off',!v);});
+  document.getElementById('btnRot').addEventListener('click',()=>{autoRotate=!autoRotate;syncRot();});
+  document.getElementById('btnReset').addEventListener('click',()=>{camGoal.r=CAM_DEFAULT.r;camGoal.theta=CAM_DEFAULT.theta;camGoal.phi=CAM_DEFAULT.phi;});
+  function syncRot(){document.getElementById('btnRot').classList.toggle('off',!autoRotate);}
+}
+function animate(){
+  requestAnimationFrame(animate);
+  if(autoRotate) camGoal.theta+=0.0026;
+  cam.r+=(camGoal.r-cam.r)*0.12; cam.theta+=(camGoal.theta-cam.theta)*0.15; cam.phi+=(camGoal.phi-cam.phi)*0.15;
+  camera.position.set(
+    target.x+cam.r*Math.sin(cam.phi)*Math.sin(cam.theta),
+    target.y+cam.r*Math.cos(cam.phi),
+    target.z+cam.r*Math.sin(cam.phi)*Math.cos(cam.theta));
+  camera.lookAt(target); renderer.render(scene,camera);
+}
+function onResize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);}
+</script>
+</body>
+</html>
