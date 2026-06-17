@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Balero — modelo 3D (set de 2 piezas)</title>
+<title>Toma Todo — modelo 3D</title>
 <style>
   :root{ --panel:rgba(16,21,28,.78); --line:rgba(255,255,255,.12); --txt:#e9eef3; --accent:#7fd1c7; }
   *{box-sizing:border-box}
@@ -32,40 +32,28 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-/* ============================================================
-   Balero (set de 2 piezas) en bolsa de celofán — Three.js r128
-   Las dos piezas comparten una misma bolsa, apiladas verticalmente.
-   Embebible: fondo transparente + modo compacto (?mode=compact)
-   ============================================================ */
-
 const PARAMS = new URLSearchParams(location.search);
 const COMPACT = PARAMS.get('mode') === 'compact';
 if (COMPACT) document.body.classList.add('compact');
 
 const app = document.getElementById('app');
-let renderer, scene, camera, bag, band, ground, envRTtex;
+let renderer, scene, camera, piece, bag, band, ground, envRTtex;
 
-// --- segunda pieza (boquilla/brida) ---
-const S2 = 16;
-const Atot = 4.10;
-const Lhalf2 = Atot*S2/2;
-const PROF2 = [
-  [0.00,0.50],[3.00,0.50],[3.02,0.62],[3.14,0.62],[3.20,0.36],
-  [3.45,0.36],[3.70,0.33],[4.00,0.27],[4.10,0.20]
-];
-
-// --- primera pieza (cilindro roscado) ---
-const R1 = 14, HL1 = 35;
-
-// --- posición vertical de cada pieza dentro de la bolsa ---
-const CY1 = 16;    // primera pieza, arriba
-const CY2 = -16;   // segunda pieza, abajo
-
+const S = 20;
+const Atot = 3.18;
+const Lhalf = Atot*S/2;
 const target = new THREE.Vector3(0, 0, 0);
-const cam = { r:255, theta:0.18, phi:1.28 };
-const camGoal = { r:255, theta:0.18, phi:1.28 };
-const CAM_DEFAULT = { r:255, theta:0.18, phi:1.28 };
+const cam = { r:185, theta:0.20, phi:1.28 };
+const camGoal = { r:185, theta:0.20, phi:1.28 };
+const CAM_DEFAULT = { r:185, theta:0.20, phi:1.28 };
 let autoRotate = true;
+
+// envolvente exterior (a axial, r radio)
+const PROF = [
+  [0.00,0.34],[0.40,0.36],[0.46,0.50],[2.05,0.50],[2.18,0.495],
+  [2.34,0.47],[2.50,0.43],[2.64,0.37],[2.76,0.29],[2.86,0.19],
+  [2.93,0.11],[2.97,0.08],[3.04,0.05],[3.12,0.02],[3.18,0.01]
+];
 
 init(); buildScene(); animate();
 
@@ -75,11 +63,11 @@ function init(){
   renderer.setSize(innerWidth, innerHeight);
   renderer.setClearColor(0x000000, 0);                 // transparente: deja ver el bloque de color de la tienda
   renderer.outputEncoding = THREE.sRGBEncoding;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.12;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   app.appendChild(renderer.domElement);
-  scene = new THREE.Scene(); scene.background = null;
-  camera = new THREE.PerspectiveCamera(35, innerWidth/innerHeight, 1, 4000);
+  scene = new THREE.Scene(); scene.background = null;   // sin fondo opaco
+  camera = new THREE.PerspectiveCamera(35, innerWidth/innerHeight, 0.5, 4000);
   const pmrem = new THREE.PMREMGenerator(renderer); pmrem.compileEquirectangularShader();
   const envTex = new THREE.CanvasTexture(makeEnvCanvas());
   envTex.mapping = THREE.EquirectangularReflectionMapping;
@@ -87,14 +75,14 @@ function init(){
   addLights(); addEventListener('resize', onResize); bindControls();
 }
 function addLights(){
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x3a4150, 0.55));
-  const key=new THREE.DirectionalLight(0xffffff,2.0); key.position.set(70,150,180); key.castShadow=true;
-  key.shadow.mapSize.set(2048,2048); key.shadow.camera.near=40; key.shadow.camera.far=600;
-  const d=120; key.shadow.camera.left=-d;key.shadow.camera.right=d;key.shadow.camera.top=d;key.shadow.camera.bottom=-d;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x39404f, 0.55));
+  const key=new THREE.DirectionalLight(0xffffff,2.0); key.position.set(70,150,160); key.castShadow=true;
+  key.shadow.mapSize.set(2048,2048); key.shadow.camera.near=20; key.shadow.camera.far=600;
+  const d=110; key.shadow.camera.left=-d;key.shadow.camera.right=d;key.shadow.camera.top=d;key.shadow.camera.bottom=-d;
   key.shadow.bias=-0.0004; key.shadow.radius=6; scene.add(key);
-  const fill=new THREE.DirectionalLight(0xcdd9ff,0.6); fill.position.set(-120,60,-40); scene.add(fill);
-  const g1=new THREE.PointLight(0xffffff,0.8,800); g1.position.set(-60,120,90); scene.add(g1);
-  const g2=new THREE.PointLight(0xfff3e0,0.6,800); g2.position.set(70,-10,120); scene.add(g2);
+  const fill=new THREE.DirectionalLight(0xcdd9ff,0.55); fill.position.set(-120,50,-30); scene.add(fill);
+  const g1=new THREE.PointLight(0xffffff,0.7,700); g1.position.set(-50,110,90); scene.add(g1);
+  const g2=new THREE.PointLight(0xfff3e0,0.5,700); g2.position.set(80,-10,110); scene.add(g2);
 }
 function makeEnvCanvas(){
   const c=document.createElement('canvas');c.width=1024;c.height=512;const ctx=c.getContext('2d');
@@ -108,97 +96,63 @@ function makeEnvCanvas(){
 }
 
 function buildScene(){
-  const matMetal = ()=>new THREE.MeshStandardMaterial({
-    color:0xc9cdd2, metalness:0.9, roughness:0.28, envMapIntensity:1.15, side:THREE.DoubleSide
-  });
-  const p1 = makePieceNiple(matMetal()); p1.position.y = CY1; scene.add(p1);
-  const p2 = makePieceBoquilla(matMetal()); p2.position.y = CY2; scene.add(p2);
-
-  const b = makeBag(); bag=b.bag; band=b.band; scene.add(bag); scene.add(band);
+  piece=makePiece(); scene.add(piece);
+  const b=makeBag(); bag=b.bag; band=b.band; scene.add(bag); scene.add(band);
   ground=new THREE.Mesh(new THREE.PlaneGeometry(1400,1400), new THREE.ShadowMaterial({opacity:0.22}));
-  ground.rotation.x=-Math.PI/2; ground.position.y=-60; ground.receiveShadow=true; scene.add(ground);
+  ground.rotation.x=-Math.PI/2; ground.position.y=-27; ground.receiveShadow=true; scene.add(ground);
 }
 
-/* ----- Primera pieza: cilindro roscado ----- */
-function makePieceNiple(mat){
-  const Rc=14.0, Rr=12.2, pitch=3.4;
-  const pts=[];
-  pts.push(new THREE.Vector2(0.0,69.0));
-  pts.push(new THREE.Vector2(0.9,70.0));
-  pts.push(new THREE.Vector2(13.0,70.0));
-  pts.push(new THREE.Vector2(14.0,69.2));
-  let y=69.2;
-  while(y>6.0){ pts.push(new THREE.Vector2(Rr,y-pitch*0.5)); pts.push(new THREE.Vector2(Rc,y-pitch)); y-=pitch; }
-  pts.push(new THREE.Vector2(14.0,4.0));
-  pts.push(new THREE.Vector2(14.0,1.0));
-  pts.push(new THREE.Vector2(13.0,0.0));
-  pts.push(new THREE.Vector2(9.8,0.0));
-  pts.push(new THREE.Vector2(9.6,0.6));
-  pts.push(new THREE.Vector2(9.5,11.0));
-  pts.push(new THREE.Vector2(3.2,14.5));
-  pts.push(new THREE.Vector2(1.0,12.5));
-  pts.push(new THREE.Vector2(0.0,8.5));
-  const geo=new THREE.LatheGeometry(pts, 160);
-  geo.translate(0,-35,0); geo.rotateZ(Math.PI/2); geo.computeVertexNormals();
-  const m=new THREE.Mesh(geo,mat); m.castShadow=true; m.receiveShadow=true; return m;
-}
-
-/* ----- Segunda pieza: cuerpo + brida + boquilla hueca ----- */
-function makePieceBoquilla(mat){
-  const pt=(r,a)=>new THREE.Vector2(r*S2, a*S2);
+/* ----- Pieza: cuerpo + espárrago + nariz ojival con aguja ----- */
+function makePiece(){
+  const pt=(r,a)=>new THREE.Vector2(r*S, a*S);
   const P=[
-    pt(0.00,-0.03), pt(0.05,0.00),
-    pt(0.50,0.00),
-    pt(0.50,3.00),
-    pt(0.62,3.04), pt(0.62,3.14),
-    pt(0.40,3.18), pt(0.36,3.22),
-    pt(0.36,3.45),
-    pt(0.33,3.70), pt(0.27,4.00),
-    pt(0.24,4.07), pt(0.20,4.10),
-    pt(0.16,4.08),
-    pt(0.13,3.95), pt(0.09,3.60),
-    pt(0.00,3.45)
+    pt(0.00,0.04), pt(0.05,0.00),          // marca de centro (cara del espárrago)
+    pt(0.34,0.00), pt(0.36,0.04),          // cara + chaflán del espárrago
+    pt(0.36,0.40),                          // lado del espárrago
+    pt(0.50,0.46),                          // hombro al cuerpo
+    pt(0.50,2.05),                          // cuerpo cilíndrico
+    pt(0.495,2.18), pt(0.47,2.34), pt(0.43,2.50), pt(0.37,2.64),
+    pt(0.29,2.76), pt(0.19,2.86), pt(0.11,2.93), pt(0.08,2.97),  // ojiva
+    pt(0.05,3.04), pt(0.02,3.12), pt(0.00,3.18)                  // aguja
   ];
   const geo=new THREE.LatheGeometry(P, 220);
-  geo.translate(0,-Lhalf2,0); geo.rotateZ(-Math.PI/2); geo.computeVertexNormals();
+  geo.translate(0, -Lhalf, 0);
+  geo.rotateZ(-Math.PI/2);                 // espárrago a la izquierda, punta a la derecha
+  geo.computeVertexNormals();
+  const mat=new THREE.MeshStandardMaterial({
+    color:0xc9cdd2, metalness:0.9, roughness:0.28, envMapIntensity:1.15, side:THREE.DoubleSide
+  });
   const m=new THREE.Mesh(geo,mat); m.castShadow=true; m.receiveShadow=true; return m;
 }
 
-// radio exterior de la 2da pieza (mundo) en función de la posición axial u
-function pr2(u){
-  let a=(u + Lhalf2)/S2; a=Math.min(Atot, Math.max(0, a));
-  if(a<=PROF2[0][0]) return PROF2[0][1]*S2;
-  for(let i=1;i<PROF2.length;i++){ if(a<=PROF2[i][0]){
-    const [a0,r0]=PROF2[i-1], [a1,r1]=PROF2[i]; const t=(a-a0)/(a1-a0); return (r0+(r1-r0)*t)*S2; } }
-  return PROF2[PROF2.length-1][1]*S2;
-}
-
-/* ----- Bolsa plana de celofán que envuelve LAS DOS piezas ----- */
+/* ----- Bolsa plana de celofán que sigue la silueta ----- */
 function makeBag(){
-  const NU=190, NV=180;
-  const W=110, H=108;
+  const NU=180, NV=140;
+  const W=88, H=42;
   const sstep=(a,b,x)=>{x=Math.min(1,Math.max(0,(x-a)/(b-a)));return x*x*(3-2*x);};
+  function pr(x){
+    let a=(x + Lhalf)/S; a=Math.min(Atot, Math.max(0, a));
+    if(a<=PROF[0][0]) return PROF[0][1]*S;
+    for(let i=1;i<PROF.length;i++){ if(a<=PROF[i][0]){
+      const [a0,r0]=PROF[i-1], [a1,r1]=PROF[i]; const t=(a-a0)/(a1-a0); return (r0+(r1-r0)*t)*S; } }
+    return PROF[PROF.length-1][1]*S;
+  }
   function wrinkle(u,v){
-    return 0.55*Math.sin(0.07*u+0.5)+0.45*Math.sin(0.05*v-0.8)
-         +0.30*Math.sin(0.11*u+0.09*v)+0.20*Math.sin(0.16*v+1.7);
+    return 0.5*Math.sin(0.08*u+0.5)+0.42*Math.sin(0.09*v-0.8)
+         +0.28*Math.sin(0.13*u+0.10*v)+0.18*Math.sin(0.22*v+1.7);
   }
   function halfH(u,v){
     const au=Math.abs(u), av=Math.abs(v);
-    const edge=(1-sstep(W/2-9,W/2,au))*(1-sstep(H/2-9,H/2,av));
+    const edge=(1-sstep(W/2-9,W/2,au))*(1-sstep(H/2-7,H/2,av));
     if(edge<=0) return 0;
-    // pieza 1 (cilindro R1) centrada en CY1
-    const xP1=1-sstep(HL1+1,HL1+9,au);
-    const d1=v-CY1; const rr1=R1*R1-d1*d1; const yp1=rr1>0?Math.sqrt(rr1):0; const b1=xP1*yp1;
-    const g1=xP1*2.2*(1-sstep(R1,R1+7,Math.abs(d1)));
-    // pieza 2 (perfil pr2) centrada en CY2
-    const xP2=1-sstep(Lhalf2+1,Lhalf2+7,au);
-    const rp2=pr2(u); const d2=v-CY2; const rr2=rp2*rp2-d2*d2; const yp2=rr2>0?Math.sqrt(rr2):0; const b2=xP2*yp2;
-    const g2=xP2*2.0*(1-sstep(rp2,rp2+6,Math.abs(d2)));
-    const bulge=Math.max(b1,b2);
-    const gap=Math.max(g1,g2);
-    const film=0.9;
-    const w=wrinkle(u,v)*(0.6+0.8*(1-Math.max(xP1,xP2)));
-    return Math.max(0, edge*(film+bulge+gap+w));
+    const xPres=1-sstep(Lhalf+1, Lhalf+7, au);
+    const rp=pr(u);
+    const rr=rp*rp-v*v; const yProf=rr>0?Math.sqrt(rr):0;
+    const bulge=xPres*yProf;
+    const gap=xPres*1.8*(1-sstep(rp,rp+6,av));
+    const film=0.8;
+    const w=wrinkle(u,v)*(0.55+0.8*(1-xPres));
+    return Math.max(0,edge*(film+bulge+gap+w));
   }
   const pos=[], idx=[];
   for(let s=0;s<2;s++){
@@ -220,14 +174,13 @@ function makeBag(){
     transparent:true, opacity:1.0, side:THREE.DoubleSide, envMapIntensity:1.5
   });
   const bagMesh=new THREE.Mesh(geo,mat); bagMesh.castShadow=true;
-
   const group=new THREE.Group();
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(5.5,1.1,12,48),
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(4.0,0.9,12,48),
     new THREE.MeshStandardMaterial({color:0xb7bec5,metalness:0.25,roughness:0.6}));
-  ring.position.set(0,H/2-13,0); group.add(ring);
-  const seal=new THREE.Mesh(new THREE.PlaneGeometry(W-16,6),
+  ring.position.set(0,H/2-8,0); group.add(ring);
+  const seal=new THREE.Mesh(new THREE.PlaneGeometry(W-16,4),
     new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:0.4,transmission:0.55,transparent:true,opacity:0.45,side:THREE.DoubleSide}));
-  seal.position.set(0,H/2-27,1.5); group.add(seal);
+  seal.position.set(0,H/2-14,1.3); group.add(seal);
   return {bag:bagMesh, band:group};
 }
 
@@ -242,9 +195,9 @@ function bindControls(){
     camGoal.theta-=(e.clientX-lx)*0.006;camGoal.phi-=(e.clientY-ly)*0.006;
     camGoal.phi=Math.max(0.18,Math.min(2.95,camGoal.phi));lx=e.clientX;ly=e.clientY;});
   el.addEventListener('pointerup',()=>drag=false); el.addEventListener('pointercancel',()=>drag=false);
-  el.addEventListener('wheel',e=>{e.preventDefault();camGoal.r*=(1+Math.sign(e.deltaY)*0.08);camGoal.r=Math.max(120,Math.min(420,camGoal.r));},{passive:false});
+  el.addEventListener('wheel',e=>{e.preventDefault();camGoal.r*=(1+Math.sign(e.deltaY)*0.08);camGoal.r=Math.max(70,Math.min(330,camGoal.r));},{passive:false});
   el.addEventListener('touchstart',e=>{if(e.touches.length===2)pinch=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);},{passive:true});
-  el.addEventListener('touchmove',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pinch){camGoal.r*=pinch/d;camGoal.r=Math.max(120,Math.min(420,camGoal.r));}pinch=d;}},{passive:true});
+  el.addEventListener('touchmove',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pinch){camGoal.r*=pinch/d;camGoal.r=Math.max(70,Math.min(330,camGoal.r));}pinch=d;}},{passive:true});
   document.getElementById('btnBag').addEventListener('click',e=>{const v=!bag.visible;bag.visible=v;band.visible=v;e.currentTarget.classList.toggle('off',!v);});
   document.getElementById('btnRot').addEventListener('click',()=>{autoRotate=!autoRotate;syncRot();});
   document.getElementById('btnReset').addEventListener('click',()=>{camGoal.r=CAM_DEFAULT.r;camGoal.theta=CAM_DEFAULT.theta;camGoal.phi=CAM_DEFAULT.phi;});
@@ -252,7 +205,7 @@ function bindControls(){
 }
 function animate(){
   requestAnimationFrame(animate);
-  if(autoRotate) camGoal.theta+=0.0024;
+  if(autoRotate) camGoal.theta+=0.0026;
   cam.r+=(camGoal.r-cam.r)*0.12; cam.theta+=(camGoal.theta-cam.theta)*0.15; cam.phi+=(camGoal.phi-cam.phi)*0.15;
   camera.position.set(
     target.x+cam.r*Math.sin(cam.phi)*Math.sin(cam.theta),
