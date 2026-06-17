@@ -50,6 +50,9 @@
 (function () {
   "use strict";
 
+  // Versión para romper la caché de los iframes de modelos (súbela al cambiar un modelo)
+  var MI_VERSION = '12';
+
   // ---------- DATOS ----------
   var PRODUCTS = [
     { id:'MI-01', code:'MI-01', name:'Balero', tipo:'Balero · 2 en 1', cat:'Sets', precio:980, accent:'#D8421C', combo:true, model3d:'models/balero.html',
@@ -156,7 +159,7 @@
       mode = mode || 'compact';
       var pe = mode === 'compact' ? 'pointer-events:none;' : '';
       var allow = mode === 'compact' ? '' : ' allow="camera; gyroscope; accelerometer"';
-      return '<iframe src="' + p.model3d + '?mode=' + mode + '" title="' + esc(p.name) + ' · modelo 3D" loading="lazy" scrolling="no" allowtransparency="true"' + allow + ' style="display:block;border:0;background:transparent;' + pe + (style||'') + '"></iframe>';
+      return '<iframe src="' + p.model3d + '?mode=' + mode + '&v=' + MI_VERSION + '" title="' + esc(p.name) + ' · modelo 3D" loading="lazy" scrolling="no" allowtransparency="true"' + allow + ' style="display:block;border:0;background:transparent;' + pe + (style||'') + '"></iframe>';
     }
     return slot(imgIdOf(p), ph, fit, style);
   }
