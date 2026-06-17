@@ -46,7 +46,7 @@ const app = document.getElementById('app');
 let renderer, scene, camera, bag, band, ground, envRTtex;
 
 // --- segunda pieza (boquilla/brida) ---
-const S2 = 16;
+const S2 = 20;
 const Atot = 4.10;
 const Lhalf2 = Atot*S2/2;
 const PROF2 = [
@@ -58,13 +58,13 @@ const PROF2 = [
 const R1 = 14, HL1 = 35;
 
 // --- posición vertical de cada pieza dentro de la bolsa ---
-const CY1 = 16;    // primera pieza, arriba
-const CY2 = -16;   // segunda pieza, abajo
+const CY1 = 17;    // primera pieza, arriba
+const CY2 = -18;   // segunda pieza, abajo
 
 const target = new THREE.Vector3(0, 0, 0);
-const cam = { r:255, theta:0.18, phi:1.28 };
-const camGoal = { r:255, theta:0.18, phi:1.28 };
-const CAM_DEFAULT = { r:255, theta:0.18, phi:1.28 };
+const cam = { r:275, theta:0.18, phi:1.28 };
+const camGoal = { r:275, theta:0.18, phi:1.28 };
+const CAM_DEFAULT = { r:275, theta:0.18, phi:1.28 };
 let autoRotate = true;
 
 init(); buildScene(); animate();
@@ -176,7 +176,7 @@ function pr2(u){
 /* ----- Bolsa plana de celofán que envuelve LAS DOS piezas ----- */
 function makeBag(){
   const NU=190, NV=180;
-  const W=110, H=108;
+  const W=120, H=116;
   const sstep=(a,b,x)=>{x=Math.min(1,Math.max(0,(x-a)/(b-a)));return x*x*(3-2*x);};
   function wrinkle(u,v){
     return 0.55*Math.sin(0.07*u+0.5)+0.45*Math.sin(0.05*v-0.8)
