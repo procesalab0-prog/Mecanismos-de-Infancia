@@ -205,7 +205,9 @@
 
     return '<nav style="position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:'+navGap+';padding:13px '+navPadX+';background:rgba(241,234,219,.9);backdrop-filter:blur(12px);border-bottom:1.5px solid #161310;">'
       + '<button data-action="go-inicio" style="display:flex;align-items:center;gap:11px;background:none;border:0;cursor:pointer;padding:0;">'
-        + '<span style="font-family:Yellowtail,cursive;font-size:42px;line-height:.55;color:#E7A833;text-shadow:2.5px 2.5px 0 #161310;padding:0 2px;">Mi</span>' + logoDesc
+        + '<span style="display:inline-flex;align-items:center;justify-content:center;background:#cf2b1d;border:2px solid #161310;border-radius:7px;padding:2px 11px 5px;line-height:0;">'
+          + '<span style="font-family:Yellowtail,cursive;font-size:36px;line-height:.55;color:#E7A833;text-shadow:2px 2px 0 #161310;">Mi</span>'
+        + '</span>' + logoDesc
       + '</button>'
       + '<div style="display:flex;align-items:center;gap:'+navInnerGap+';">'
         + '<button data-action="go-inicio" style="font-family:\'Space Mono\',monospace;font-size:'+navFs+';letter-spacing:.06em;text-transform:uppercase;background:none;border:0;cursor:pointer;padding:'+navLinkPad+';color:#161310;border-bottom:2px solid '+ulInicio+';">Inicio</button>'
