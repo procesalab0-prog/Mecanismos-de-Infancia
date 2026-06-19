@@ -26,6 +26,16 @@
     100%{color:#cf2b1d;font-style:normal;font-family:'Archivo',sans-serif}
   }
   @keyframes mi-sway{0%,100%{transform:rotate(-3.5deg)}50%{transform:rotate(3.5deg)}}
+  @keyframes mi-overlay-in{from{opacity:0}to{opacity:1}}
+  @keyframes mi-caja-float{0%,100%{transform:translateY(-6px)}50%{transform:translateY(6px)}}
+  @keyframes mi-caja-pop{
+    0%{transform:translateY(-240px) rotateX(-16deg) rotateY(-30deg) scale(.18);opacity:0}
+    55%{transform:translateY(16px) rotateX(-16deg) rotateY(-30deg) scale(.62);opacity:1}
+    75%{transform:translateY(-6px) rotateX(-16deg) rotateY(-30deg) scale(.565)}
+    100%{transform:translateY(0) rotateX(-16deg) rotateY(-30deg) scale(.58)}
+  }
+  @keyframes mi-confetti{0%{transform:translateY(-30px) rotate(0);opacity:1}100%{transform:translateY(440px) rotate(560deg);opacity:0}}
+  @keyframes mi-caja-text{0%{opacity:0;transform:translateY(14px)}100%{opacity:1;transform:none}}
 
   /* ---- image-slot (reemplaza el componente del prototipo, persiste en localStorage) ---- */
   image-slot{display:block;position:relative;cursor:pointer;overflow:hidden;background:transparent}
@@ -121,7 +131,62 @@
     state.cart = state.cart.filter(function (c) { return c.id !== id; });
     saveCart(); render();
   }
-  function checkout() { state.cart = []; saveCart(); state.ordered = true; render(); }
+  function checkout() { state.cart = []; saveCart(); state.ordered = true; render(); showCajaAnim(); }
+
+  // ---------- ANIMACIÓN CAJA COLECCIÓN MI (al finalizar compra) ----------
+  function cajaBox3D() {
+    // Cara frontal (emblema)
+    var front = '<div style="position:absolute;width:300px;height:360px;top:0;left:0;transform:translateZ(70px);background:#a7c6e5;border:3px solid #161310;display:flex;align-items:center;justify-content:center;padding:16px;backface-visibility:hidden;">'
+      + '<div style="width:100%;height:100%;border:2.5px solid #cf2b1d;display:flex;align-items:center;justify-content:center;padding:9px;">'
+        + '<div style="width:100%;height:100%;border:1.4px solid #cf2b1d;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px 12px;">'
+          + '<div style="display:flex;justify-content:space-between;width:100%;font-family:\'Space Mono\',monospace;font-weight:700;font-size:9.5px;letter-spacing:.1em;color:#cf2b1d;"><span>✳ Nº01</span><span>EST. 2026</span></div>'
+          + '<div style="font-family:Archivo;font-weight:800;font-size:14px;letter-spacing:.18em;color:#cf2b1d;margin-top:14px;">MECANISMOS DE</div>'
+          + '<div style="font-family:Yellowtail,cursive;font-size:92px;line-height:.6;color:#cf2b1d;margin:6px 0;">Mi</div>'
+          + '<div style="font-family:Archivo;font-weight:900;font-size:24px;letter-spacing:.2em;color:#161310;">INFANCIA</div>'
+          + '<div style="font-family:\'Space Mono\',monospace;font-weight:700;font-size:9px;letter-spacing:.12em;color:#cf2b1d;margin-top:22px;">JUGUETES DE METAL · CNC</div>'
+          + '<div style="font-family:\'Space Mono\',monospace;font-weight:700;font-size:8.5px;letter-spacing:.14em;color:#161310;opacity:.6;margin-top:4px;">HECHO EN MÉXICO</div>'
+        + '</div></div></div>';
+    // Tapa superior
+    var top = '<div style="position:absolute;width:300px;height:140px;top:110px;left:0;transform:rotateX(90deg) translateZ(180px);background:#8fb3d6;border:3px solid #161310;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px;">'
+      + '<div style="font-family:Yellowtail,cursive;font-size:40px;line-height:.6;color:#cf2b1d;">Mi</div>'
+      + '<div style="font-family:\'Space Mono\',monospace;font-weight:700;font-size:9px;letter-spacing:.18em;color:#161310;">COLECCIÓN · 5 PIEZAS</div></div>';
+    // Costado derecho
+    var side = '<div style="position:absolute;width:140px;height:360px;top:0;left:80px;transform:rotateY(90deg) translateZ(150px);background:#cf2b1d;border:3px solid #161310;display:flex;align-items:center;justify-content:center;overflow:hidden;">'
+      + '<div style="writing-mode:vertical-rl;font-family:Archivo;font-weight:900;font-size:34px;letter-spacing:.06em;color:#F1EADB;text-transform:uppercase;">Colección</div>'
+      + '<div style="position:absolute;bottom:18px;left:0;right:0;text-align:center;font-family:\'Space Mono\',monospace;font-weight:700;font-size:10px;letter-spacing:.14em;color:#F1EADB;">MI · 2026</div></div>';
+    return '<div style="position:relative;width:300px;height:360px;transform-style:preserve-3d;transform:rotateX(-16deg) rotateY(-30deg) scale(.58);animation:mi-caja-pop .9s cubic-bezier(.2,.8,.25,1) forwards;">'
+      + front + top + side + '</div>';
+  }
+
+  function showCajaAnim() {
+    var old = document.getElementById('mi-checkout-anim');
+    if (old) old.remove();
+    var colors = ['#cf2b1d','#1C6B52','#E7A833','#D6336C','#F1EADB','#a7c6e5'];
+    var confetti = '';
+    for (var i = 0; i < 22; i++) {
+      var c = colors[i % colors.length], left = Math.round(Math.random()*100),
+          delay = (Math.random()*0.6).toFixed(2), dur = (1.8 + Math.random()*1.4).toFixed(2),
+          sz = 7 + Math.round(Math.random()*7);
+      confetti += '<span style="position:absolute;top:-20px;left:'+left+'%;width:'+sz+'px;height:'+(sz+2)+'px;background:'+c+';border:1px solid #161310;animation:mi-confetti '+dur+'s linear '+delay+'s infinite;"></span>';
+    }
+    var el = document.createElement('div');
+    el.id = 'mi-checkout-anim';
+    el.setAttribute('data-action', 'caja-done');
+    el.style.cssText = 'position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(22,19,16,.72);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);animation:mi-overlay-in .3s ease;cursor:pointer;';
+    el.innerHTML =
+      '<div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">'+confetti+'</div>'
+      + '<div style="perspective:1600px;height:300px;display:flex;align-items:center;justify-content:center;animation:mi-caja-float 3.2s ease-in-out 1s infinite;">'+cajaBox3D()+'</div>'
+      + '<div style="text-align:center;color:#F1EADB;margin-top:26px;animation:mi-caja-text .6s ease .7s both;max-width:30em;padding:0 20px;">'
+        + '<div style="font-family:Archivo;font-weight:900;font-size:clamp(28px,5vw,40px);letter-spacing:-.03em;">¡Gracias por tu compra!</div>'
+        + '<p style="font-family:Archivo;font-weight:500;font-size:15px;line-height:1.5;color:#e6dcc8;margin:10px 0 0;">Tu <strong>Caja Colección MI</strong> con tus piezas de metal va en camino.</p>'
+        + '<button data-action="caja-done" style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;background:#cf2b1d;color:#F1EADB;border:1.5px solid #F1EADB;cursor:pointer;padding:14px 26px;margin-top:20px;">Seguir explorando</button>'
+      + '</div>';
+    document.body.appendChild(el);
+  }
+  function closeCajaAnim() {
+    var el = document.getElementById('mi-checkout-anim');
+    if (el) el.remove();
+  }
 
   // ---------- HELPERS DE PRESENTACIÓN ----------
   function esc(t) { return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -615,6 +680,7 @@
       case 'dec': chQty(id, -1); break;
       case 'remove': removeItem(id); break;
       case 'checkout': checkout(); break;
+      case 'caja-done': closeCajaAnim(); go('inicio'); break;
     }
   });
 
